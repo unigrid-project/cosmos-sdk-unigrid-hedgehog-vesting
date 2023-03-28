@@ -3,7 +3,7 @@ package cmd
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"ugdvesting/app"
+	"github.com/timnhanta/ugdvesting/app"
 )
 
 func initSDKConfig() {

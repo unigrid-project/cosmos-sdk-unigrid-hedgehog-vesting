@@ -6,8 +6,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/server"
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 
-	"ugdvesting/app"
-	"ugdvesting/cmd/ugdvestingd/cmd"
+	"github.com/timnhanta/ugdvesting/app"
+	"github.com/timnhanta/ugdvesting/cmd/ugdvestingd/cmd"
 )
 
 func main() {

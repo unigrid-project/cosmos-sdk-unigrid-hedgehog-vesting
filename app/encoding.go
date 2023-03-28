@@ -6,7 +6,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/std"
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 
-	"ugdvesting/app/params"
+	"github.com/timnhanta/ugdvesting/app/params"
 )
 
 // makeEncodingConfig creates an EncodingConfig for an amino based test configuration.

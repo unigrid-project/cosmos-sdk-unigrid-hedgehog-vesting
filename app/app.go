@@ -104,9 +104,10 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	// this line is used by starport scaffolding # stargate/app/moduleImport
+	ugdvestingante "github.com/timnhanta/ugdvesting/x/hedgehogvesting/ante"
 
-	appparams "ugdvesting/app/params"
-	"ugdvesting/docs"
+	appparams "github.com/timnhanta/ugdvesting/app/params"
+	"github.com/timnhanta/ugdvesting/docs"
 )
 
 const (
@@ -678,13 +679,10 @@ func New(
 	app.SetInitChainer(app.InitChainer)
 	app.SetBeginBlocker(app.BeginBlocker)
 
-	anteHandler, err := ante.NewAnteHandler(
+	anteHandler, err := ugdvestingante.NewAnteHandler(
 		ante.HandlerOptions{
-			AccountKeeper:   app.AccountKeeper,
-			BankKeeper:      app.BankKeeper,
-			SignModeHandler: encodingConfig.TxConfig.SignModeHandler(),
-			FeegrantKeeper:  app.FeeGrantKeeper,
-			SigGasConsumer:  ante.DefaultSigVerificationGasConsumer,
+			AccountKeeper: app.AccountKeeper,
+			BankKeeper:    app.BankKeeper,
 		},
 	)
 	if err != nil {

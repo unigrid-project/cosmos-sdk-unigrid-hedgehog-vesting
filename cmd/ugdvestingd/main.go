@@ -6,8 +6,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/server"
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 
-	"github.com/timnhanta/ugdvesting/app"
-	"github.com/timnhanta/ugdvesting/cmd/ugdvestingd/cmd"
+	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/app"
+	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/cmd/ugdvestingd/cmd"
 )
 
 func main() {

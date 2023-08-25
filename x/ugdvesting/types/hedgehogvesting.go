@@ -3,18 +3,12 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
 	durationLib "github.com/sosodev/duration"
-)
-
-const (
-	Denom          = "ugd"
-	CoinPower      = 18
-	CoinPowerValue = 1000000000000000000
-	precision      = 256
 )
 
 type Vesting struct {
@@ -52,25 +46,17 @@ func GetUnvestedAmount(vesting Vesting) sdkmath.Int {
 	return sdkmath.NewInt(0)
 }
 
-func (v *Vesting) AmountBigFloat() *big.Float {
-	var float big.Float
-	float.SetPrec(precision)
-	float.SetInt(v.Amount.BigInt())
-	result := float.Quo(&float, big.NewFloat(CoinPowerValue))
-	return result
-}
-
-func SdkIntToFloat(amount sdkmath.Int) *big.Float {
+func SdkIntToFloat(amount sdkmath.Int, precision uint, coinPowerValue float64) *big.Float {
 	var float big.Float
 	float.SetPrec(precision)
 	float.SetInt(amount.BigInt())
-	result := float.Quo(&float, big.NewFloat(CoinPowerValue))
+	result := float.Quo(&float, big.NewFloat(coinPowerValue))
 	return result
 }
 
-func SdkIntToString(amount sdkmath.Int) string {
-	float := SdkIntToFloat(amount)
-	return float.Text('f', CoinPower)
+func SdkIntToString(amount sdkmath.Int, precision uint, coinPowerValue float64, coinPower int) string {
+	float := SdkIntToFloat(amount, precision, coinPowerValue)
+	return float.Text('f', coinPower)
 }
 
 func (v *Vesting) UnmarshalJSON(data []byte) error {
@@ -94,13 +80,13 @@ func (v *Vesting) UnmarshalJSON(data []byte) error {
 	}
 
 	// convert the "amount" string to a big.Float
-	amountFloat, _, err := big.ParseFloat(aux.Amount, 10, precision, big.ToNearestEven)
+	amountFloat, _, err := big.ParseFloat(aux.Amount, 10, 256, big.ToNearestEven)
 	if err != nil {
 		return fmt.Errorf("invalid amount value: %s", aux.Amount)
 	}
 
 	// Multiply the float by 10^18 to shift the decimal point 18 places to the right
-	amountFloatMul := new(big.Float).Mul(amountFloat, big.NewFloat(CoinPowerValue))
+	amountFloatMul := new(big.Float).Mul(amountFloat, big.NewFloat(math.Pow10(18)))
 
 	// Convert the scaled float to a big.Int
 	amountInt := new(big.Int)

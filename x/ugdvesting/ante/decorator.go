@@ -1,13 +1,15 @@
-package app
+package ante
 
 import (
 	"fmt"
+
+	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/timnhanta/ugdvesting/x/hedgehogvesting/types"
+	ugdvestingmodulekeeper "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/keeper"
 )
 
 // ValidateBasicDecorator will call tx.ValidateBasic and return any non-nil error.
@@ -15,12 +17,14 @@ import (
 // ValidateBasicDecorator decorator will not get executed on ReCheckTx since it
 // is not dependent on application state.
 type ValidateBasicDecorator struct {
-	bankKeeper bankkeeper.Keeper
+	bankKeeper       bankkeeper.Keeper
+	ugdVestingKeeper ugdvestingmodulekeeper.Keeper
 }
 
-func NewValidateBasicDecorator(bk bankkeeper.Keeper) ValidateBasicDecorator {
+func NewValidateBasicDecorator(bk bankkeeper.Keeper, uk ugdvestingmodulekeeper.Keeper) ValidateBasicDecorator {
 	return ValidateBasicDecorator{
-		bankKeeper: bk,
+		bankKeeper:       bk,
+		ugdVestingKeeper: uk,
 	}
 }
 
@@ -30,7 +34,7 @@ func (vbd ValidateBasicDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulat
 		return next(ctx, tx, simulate)
 	}
 
-	if err := ValidateTransaction(ctx, vbd.bankKeeper, tx.GetMsgs()); err != nil {
+	if err := ValidateTransaction(ctx, vbd.bankKeeper, vbd.ugdVestingKeeper, tx.GetMsgs()); err != nil {
 		return ctx, err
 	}
 
@@ -41,28 +45,45 @@ func (vbd ValidateBasicDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulat
 	return next(ctx, tx, simulate)
 }
 
-func ValidateTransaction(ctx sdk.Context, bk bankkeeper.Keeper, msgs []sdk.Msg) error {
+func ValidateTransaction(ctx sdk.Context, bk bankkeeper.Keeper, uk ugdvestingmodulekeeper.Keeper, msgs []sdk.Msg) error {
 	allowTransaction := true
+
+	// res, found := bk.GetDenomMetaData(ctx, "ugd")
+	// if !found {
+	// 	return &types.MyError{Message: "Denomination has not been found in bank keeper"}
+	// }
+
+	params := uk.GetParams(ctx)
+	fmt.Println("PARAMS ", params)
+	denom := params.Denom
+	coinPowerValue := params.CoinPowerValue
+	precision := params.Precision
 
 	for _, msg := range msgs {
 		if msgBank, ok := msg.(*banktypes.MsgSend); ok {
 			addr, err := sdk.AccAddressFromBech32(msgBank.FromAddress)
-			account := bk.GetBalance(ctx, addr, types.Denom)
-			if account.Denom != types.Denom {
+			account := bk.GetBalance(ctx, addr, denom)
+			if account.Denom != denom {
 				return nil
 			}
 			if err != nil {
 				return err
 			}
 
-			var vesting *types.Vesting
-			vesting = types.HegdehogRequestGetVestingByAddr(addr.String())
+			vesting := types.HegdehogRequestGetVestingByAddr(addr.String())
 			if vesting == nil {
 				return nil
 			}
 
+			isInMintingList := types.HegdehogCheckIfInMintingList(addr.String())
+			if isInMintingList {
+				return &types.MyError{
+					Message: fmt.Sprintf("Address: %s should not be in minting and vesting list", addr.String()),
+				}
+			}
+
 			unvestedAmount := types.GetUnvestedAmount(*vesting)
-			messageAmount := msgBank.Amount.AmountOf(types.Denom)
+			messageAmount := msgBank.Amount.AmountOf(denom)
 			accountAmount := account.Amount
 
 			// check if transaction is allowed based on unvested, transaction and account balance
@@ -74,14 +95,14 @@ func ValidateTransaction(ctx sdk.Context, bk bankkeeper.Keeper, msgs []sdk.Msg) 
 					Message: fmt.Sprintf(
 						"%v with %.18f%v unvested, need least %.18f%v, when doing transaction of %.18f%v, but account has %.18f%v.",
 						addr.String(),
-						types.SdkIntToFloat(unvestedAmount),
-						types.Denom,
-						types.SdkIntToFloat(accountRequiredBalance),
-						types.Denom,
-						types.SdkIntToFloat(messageAmount),
-						types.Denom,
-						types.SdkIntToFloat(accountAmount),
-						types.Denom,
+						types.SdkIntToFloat(unvestedAmount, uint(precision), float64(coinPowerValue)),
+						denom,
+						types.SdkIntToFloat(accountRequiredBalance, uint(precision), float64(coinPowerValue)),
+						denom,
+						types.SdkIntToFloat(messageAmount, uint(precision), float64(coinPowerValue)),
+						denom,
+						types.SdkIntToFloat(accountAmount, uint(precision), float64(coinPowerValue)),
+						denom,
 					),
 				}
 

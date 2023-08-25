@@ -2,12 +2,14 @@ package types_test
 
 import (
 	"encoding/json"
+	"math"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
+
 	sdkmath "cosmossdk.io/math"
-	"github.com/timnhanta/ugdvesting/x/hedgehogvesting/types"
 )
 
 func TestGetUnvestedAmount(t *testing.T) {
@@ -72,27 +74,6 @@ func TestGetUnvestedAmount(t *testing.T) {
 	}
 }
 
-func TestAmountBigFloat(t *testing.T) {
-	var expected big.Float
-	var bigInt big.Int
-
-	expected.SetPrec(256)
-	expected.SetString("7000.707070707070707070")
-
-	bigInt.SetString("7000707070707070707070", 10)
-
-	vesting := types.Vesting{
-		Amount:   sdkmath.NewIntFromBigInt(&bigInt),
-		Start:    "2023-03-14T18:41:20Z",
-		Duration: "PT168H29M58S",
-		Parts:    7,
-	}
-
-	if vesting.AmountBigFloat().Cmp(&expected) != 0 {
-		t.Errorf("Unexpected response. Expected %+v, but got %+v", expected, vesting.AmountBigFloat())
-	}
-}
-
 func TestSdkIntToFloat(t *testing.T) {
 	var expected big.Float
 	var bigInt big.Int
@@ -101,7 +82,7 @@ func TestSdkIntToFloat(t *testing.T) {
 	expected.SetString("7000.707070707070707070")
 
 	bigInt.SetString("7000707070707070707070", 10)
-	result := types.SdkIntToFloat(sdkmath.NewIntFromBigInt(&bigInt))
+	result := types.SdkIntToFloat(sdkmath.NewIntFromBigInt(&bigInt), 256, math.Pow10(18))
 
 	if result.Cmp(&expected) != 0 {
 		t.Errorf("Unexpected response. Expected %+v, but got %+v", expected, result)
@@ -113,7 +94,7 @@ func TestSdkIntToString(t *testing.T) {
 
 	var bigInt big.Int
 	bigInt.SetString("7000707070707070707070", 10)
-	result := types.SdkIntToString(sdkmath.NewIntFromBigInt(&bigInt))
+	result := types.SdkIntToString(sdkmath.NewIntFromBigInt(&bigInt), 256, math.Pow10(18), 18)
 
 	if result != expected {
 		t.Errorf("Unexpected response. Expected %+v, but got %+v", expected, result)

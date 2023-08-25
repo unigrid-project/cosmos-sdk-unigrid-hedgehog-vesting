@@ -1,15 +1,15 @@
 version: 1
 accounts:
 - name: alice
-  mnemonic: melt table child eagle often town scrub dog true pen dignity vintage giant rural note develop toe viable thank glow elder jazz tomato twice
   coins:
-  - 20000000000000000000000ugd
+  - 20000token
   - 200000000stake
+  - 200000000000000000ugd
 - name: bob
-  mnemonic: recipe nothing scrub code cheese blossom unknown gadget diary hollow copper top menu dismiss ankle absurd below subject opinion make blast seek stone wait
   coins:
-  - 10000ugd
+  - 10000token
   - 100000000stake
+  - 10000ugd
 client:
   openapi:
     path: docs/static/openapi.yml
@@ -18,20 +18,6 @@ faucet:
   coins:
   - 5token
   - 100000stake
-  host: 127.0.100.1:4500
 validators:
 - name: alice
   bonded: 100000000stake
-  app:
-    api:
-      address: 127.0.100.1:1317
-    grpc:
-      address: 127.0.100.1:16692
-    grpc-web:
-      address: 127.0.100.1:16693
-  config:
-    p2p:
-      laddr: 127.0.100.1:26658
-    rpc:
-      laddr: 127.0.100.1:26657
-      pprof_laddr: 127.0.100.1:6661

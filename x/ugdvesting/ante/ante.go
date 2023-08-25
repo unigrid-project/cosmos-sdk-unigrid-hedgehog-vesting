@@ -1,4 +1,4 @@
-package app
+package ante
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -6,13 +6,14 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
+	ugdkeeper "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/keeper"
 )
 
 // NewAnteHandler returns an AnteHandler that checks and increments sequence
 // numbers, checks signatures & account numbers, and deducts fees from the first
 // signer.
 // Stripped from x/auth/ante/ante.go NewAnteHandler.
-func NewAnteHandler(options ante.HandlerOptions) (sdk.AnteHandler, error) {
+func NewAnteHandler(options ante.HandlerOptions, uk ugdkeeper.Keeper) (sdk.AnteHandler, error) {
 	if options.AccountKeeper == nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrLogic, "account keeper is required for AnteHandler")
 	}
@@ -28,7 +29,7 @@ func NewAnteHandler(options ante.HandlerOptions) (sdk.AnteHandler, error) {
 	anteDecorators := []sdk.AnteDecorator{
 		//ante.NewSetUpContextDecorator(), // outermost AnteDecorator. SetUpContext must be called first
 		//ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
-		NewValidateBasicDecorator(options.BankKeeper.(bankkeeper.Keeper)),
+		NewValidateBasicDecorator(options.BankKeeper.(bankkeeper.Keeper), uk),
 		//ante.NewTxTimeoutHeightDecorator(),
 		//ante.NewValidateMemoDecorator(options.AccountKeeper),
 		//ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),

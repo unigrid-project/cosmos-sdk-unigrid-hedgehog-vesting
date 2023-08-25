@@ -1,0 +1,12 @@
+syntax = "proto3";
+package ugdvesting.ugdvesting;
+
+import "gogoproto/gogo.proto";
+import "ugdvesting/ugdvesting/params.proto";
+
+option go_package = "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types";
+
+// GenesisState defines the ugdvesting module's genesis state.
+message GenesisState {
+  Params params = 1 [(gogoproto.nullable) = false];
+}

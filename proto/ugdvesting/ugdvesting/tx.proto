@@ -1,0 +1,7 @@
+syntax = "proto3";
+package ugdvesting.ugdvesting;
+
+option go_package = "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types";
+
+// Msg defines the Msg service.
+service Msg {}

@@ -5,20 +5,19 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-)
 
-const (
-	HedgehogBaseUrlTest = "https://localhost:52884/gridspork/vesting-storage/"
+	"github.com/spf13/viper"
 )
 
 func HegdehogRequestGetVestingByAddr(addr string) *Vesting {
+	hedgehogUrl := viper.GetString("hedgehog.hedgehog_url") + "/gridspork/vesting-storage/"
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
 	client := &http.Client{Transport: tr}
 
-	resp, err := client.Get(HedgehogBaseUrlTest + addr)
+	resp, err := client.Get(hedgehogUrl + addr)
 	if err != nil {
 		panic(err)
 	}

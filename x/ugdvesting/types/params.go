@@ -11,7 +11,7 @@ const (
 	DefaultCoinPower      uint32 = 18
 	DefaultCoinPowerValue uint64 = 1000000000000000000
 	DefaultPrecision      uint32 = 256
-	DefaultDenom          string = "ugd"
+	Denom                 string = "ugd"
 )
 
 // NewParams creates a new Params instance
@@ -30,7 +30,7 @@ func DefaultParams() Params {
 		DefaultCoinPower,
 		DefaultCoinPowerValue,
 		DefaultPrecision,
-		DefaultDenom,
+		Denom,
 	)
 }
 

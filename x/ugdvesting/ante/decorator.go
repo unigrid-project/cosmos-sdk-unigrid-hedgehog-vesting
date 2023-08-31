@@ -66,6 +66,7 @@ func ValidateTransaction(ctx sdk.Context, bk bankkeeper.Keeper, uk ugdvestingmod
 			if account.Denom != denom {
 				return nil
 			}
+
 			if err != nil {
 				return err
 			}

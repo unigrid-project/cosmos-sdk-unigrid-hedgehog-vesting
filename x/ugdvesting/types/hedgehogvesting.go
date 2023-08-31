@@ -223,19 +223,25 @@ func updateVestingAcc(address string, v Vesting) {
 	coins := sdk.NewCoins(sdk.NewCoin("ugd", sdk.NewInt(int64(v.Amount)*int64(math.Pow10(8)))))
 	timeStart, _ := time.Parse(time.RFC3339, v.Start)
 
-	vestingDurationLib, err := durationLib.Parse(v.Duration)
+	vestingAcc := vestingtypes.NewPeriodicVestingAccount(baseAcc, coins, timeStart.Unix(), AngelPeriods(v))
+
+	vestingtypes.RegisterMsgServer(grpc, &vestingtypes.UnimplementedMsgServer{})
+}
+
+func AngelPeriods(v Vesting) vestingtypes.Periods {
+	vestingDurationLib, _ := durationLib.Parse(v.Duration)
 	vestingDuration := vestingDurationLib.ToTimeDuration()
 
-	period := vestingtypes.Period{
-		Length: int64(vestingDuration.Seconds()) / v.Parts,
-		Amount: sdk.NewCoins(sdk.NewCoin("ugd", sdk.NewInt((int64(v.Amount) * int64(math.Pow10(8)/float64(v.Parts)))))),
-	}
-	periods := vestingtypes.Periods{
-		period,
+	var periods []vestingtypes.Period
+
+	for i := int64(0); i < v.Parts; i++ {
+		periods = append(periods, vestingtypes.Period{
+			Length: int64(vestingDuration.Seconds()) / v.Parts,
+			Amount: sdk.NewCoins(sdk.NewCoin("ugd", sdk.NewInt((int64(v.Amount) * int64(math.Pow10(8)/float64(v.Parts)))))),
+		})
 	}
 
-	vestingAcc := vestingtypes.NewPeriodicVestingAccount(baseAcc, coins, timeStart.Unix(), periods)
-
+	return periods
 }
 
 func NewCache() *VestingCache {

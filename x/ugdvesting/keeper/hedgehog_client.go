@@ -148,7 +148,8 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 
 		account := k.GetAccount(ctx, addr)
 		if account == nil {
-			continue
+			fmt.Println("Account not found:", addr)
+			return
 		}
 
 		// Check if the account is already a PeriodicVestingAccount

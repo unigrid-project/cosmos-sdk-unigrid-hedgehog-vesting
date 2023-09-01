@@ -16,7 +16,8 @@ const (
 
 var (
 	// ParamsKey is the prefix for params key
-	ParamsKey = []byte{0x00}
+	ParamsKey  = []byte{0x00}
+	VestingKey = []byte{0x01}
 )
 
 func KeyPrefix(p string) []byte {

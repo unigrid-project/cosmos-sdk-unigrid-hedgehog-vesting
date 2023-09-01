@@ -30,7 +30,7 @@ func NewKeeper(
 	memKey storetypes.StoreKey,
 	ps paramtypes.Subspace,
 	bk types.BankKeeper,
-
+	ak types.AccountKeeper,
 ) *Keeper {
 	// set KeyTable if it has not already been set
 	if !ps.HasKeyTable() {
@@ -42,6 +42,7 @@ func NewKeeper(
 		storeKey:   storeKey,
 		memKey:     memKey,
 		paramstore: ps,
+		authKeeper: ak,
 	}
 }
 
@@ -50,6 +51,10 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 }
 
 func (k Keeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) authtypes.AccountI {
+	if k.authKeeper == nil {
+		fmt.Println("authKeeper is nil")
+		return nil
+	}
 	return k.authKeeper.GetAccount(ctx, addr)
 }
 

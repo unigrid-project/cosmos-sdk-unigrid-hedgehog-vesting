@@ -150,15 +150,17 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 		if k.HasProcessedAddress(ctx, addr) {
 			continue
 		}
-		fmt.Println("Account not found for address:", addr)
+		fmt.Println("address:", addr)
 		account := k.GetAccount(ctx, addr)
-		if account == nil {
-			fmt.Println("Account not found:", addr)
-			return
-		}
+		fmt.Println("account:", account)
+		// if account == nil {
+		// 	fmt.Println("Account not found:", addr)
+		// 	continue
+		// }
 
 		// Check if the account is already a PeriodicVestingAccount
 		if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
+			fmt.Println("Account is not a PeriodicVestingAccount:", addr)
 			// Ensure the account exists and has a balance
 			currentBalances := k.GetAllBalances(ctx, addr)
 			if currentBalances.IsZero() {

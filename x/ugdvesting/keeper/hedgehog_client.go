@@ -21,7 +21,7 @@ type VestingData struct {
 	Address  string
 	Amount   int
 	Start    time.Time
-	Duration time.Duration
+	Duration string
 	Parts    int
 }
 
@@ -123,6 +123,7 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 	for key, vesting := range res.Data.VestingAddresses {
 		address := strings.TrimPrefix(key, "Address(wif=")
 		address = strings.TrimSuffix(address, ")")
+
 		vc.vestings[address] = VestingData{
 			Address:  address,
 			Amount:   vesting.Amount,

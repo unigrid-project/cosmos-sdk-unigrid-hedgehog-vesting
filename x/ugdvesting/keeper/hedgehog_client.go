@@ -83,6 +83,11 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
+	if k.storeKey == nil {
+		fmt.Println("storeKey in Keeper is nil")
+		return
+	}
+
 	client := &http.Client{Transport: tr}
 	response, err := client.Get(serverUrl)
 
@@ -145,7 +150,7 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 		if k.HasProcessedAddress(ctx, addr) {
 			continue
 		}
-
+		fmt.Println("Account not found for address:", addr)
 		account := k.GetAccount(ctx, addr)
 		if account == nil {
 			fmt.Println("Account not found:", addr)
@@ -209,7 +214,6 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 }
 
 func ConvertStringToAcc(address string) (sdk.AccAddress, error) {
-	//sdk.GetConfig().SetBech32PrefixForAccount("unigrid", "unigrid")
-	//s := strings.TrimPrefix(address, "unigrid")
+	fmt.Println("Converting address:", address)
 	return sdk.AccAddressFromBech32(address)
 }

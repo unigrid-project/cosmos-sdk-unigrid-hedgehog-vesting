@@ -523,8 +523,8 @@ func New(
 		keys[ugdvestingmoduletypes.StoreKey],
 		keys[ugdvestingmoduletypes.MemStoreKey],
 		app.GetSubspace(ugdvestingmoduletypes.ModuleName),
-		app.BankKeeper,    // Assuming you have BankKeeper initialized as app.BankKeeper
-		app.AccountKeeper, // Assuming you have AccountKeeper initialized as app.AccountKeeper
+		app.BankKeeper,
+		app.AccountKeeper,
 	)
 
 	ugdvestingModule := ugdvestingmodule.NewAppModule(appCodec, app.UgdvestingKeeper, app.AccountKeeper, app.BankKeeper)

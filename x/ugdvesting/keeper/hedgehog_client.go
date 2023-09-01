@@ -14,6 +14,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
+	"github.com/spf13/viper"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
@@ -37,34 +38,84 @@ type HedgehogData struct {
 }
 
 type VestingCache struct {
-	stop     chan struct{}
-	wg       sync.WaitGroup
-	mu       sync.RWMutex
-	vestings map[string]VestingData
-	first    bool
+	stop               chan struct{}
+	wg                 sync.WaitGroup
+	mu                 sync.RWMutex
+	vestings           map[string]VestingData
+	processedAddresses map[string]bool
+	first              bool
 }
+
+const (
+	cacheUpdateInterval = 15 * time.Second
+)
 
 var (
 	c    = &VestingCache{}
 	once sync.Once
 )
 
-func GetCache() *VestingCache {
+func GetCache(ctx sdk.Context, k Keeper) *VestingCache {
 	fmt.Println("Getting vesting cache")
 	once.Do(func() {
-		c = NewCache()
+		c = NewCache(ctx, k)
 	})
 	return c
 }
 
-func NewCache() *VestingCache {
+func NewCache(ctx sdk.Context, k Keeper) *VestingCache {
 	vc := &VestingCache{
-		vestings: make(map[string]VestingData),
-		stop:     make(chan struct{}),
-		first:    true,
+		vestings:           make(map[string]VestingData),
+		processedAddresses: make(map[string]bool),
+		stop:               make(chan struct{}),
+		first:              true,
 	}
 
+	vc.wg.Add(1)
+	go func() {
+		defer vc.wg.Done()
+		vc.cleanupCache(ctx, k)
+	}()
+
 	return vc
+}
+
+func (vc *VestingCache) cleanupCache(ctx sdk.Context, k Keeper) {
+	t := time.NewTicker(cacheUpdateInterval)
+	defer t.Stop()
+
+	if vc.first {
+		hedgehogUrl := viper.GetString("hedgehog.hedgehog_url")
+		fmt.Println("hedgehogUrl in vesting 1:", hedgehogUrl)
+		vc.CallHedgehog(hedgehogUrl+"/gridspork/vesting-storage", ctx, k)
+		vc.first = false
+	}
+
+	for {
+		select {
+		case <-vc.stop:
+			return
+		case <-t.C:
+			vc.mu.Lock()
+			hedgehogUrl := viper.GetString("hedgehog.hedgehog_url")
+			fmt.Println("hedgehogUrl in vesting 2:", hedgehogUrl)
+			vc.CallHedgehog(hedgehogUrl+"/gridspork/vesting-storage", ctx, k)
+			vc.mu.Unlock()
+		}
+	}
+}
+
+func (vc *VestingCache) SetProcessedInCache(address sdk.AccAddress) {
+	vc.mu.Lock()
+	defer vc.mu.Unlock()
+	vc.processedAddresses[address.String()] = true
+}
+
+func (vc *VestingCache) IsProcessedInCache(address sdk.AccAddress) bool {
+	vc.mu.RLock()
+	defer vc.mu.RUnlock()
+	_, exists := vc.processedAddresses[address.String()]
+	return exists
 }
 
 func (k Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
@@ -82,10 +133,6 @@ func (k Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) boo
 func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	if k.storeKey == nil {
-		fmt.Println("storeKey in Keeper is nil")
-		return
 	}
 
 	client := &http.Client{Transport: tr}
@@ -150,12 +197,8 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 		if k.HasProcessedAddress(ctx, addr) {
 			continue
 		}
-		fmt.Println("ChainID:", ctx.ChainID())
-		fmt.Println("BlockHeight:", ctx.BlockHeight())
-		fmt.Println("address:", addr)
-		fmt.Println("keeper:", k)
+
 		account := k.GetAccount(ctx, addr)
-		fmt.Println("account:", account)
 		if account == nil {
 			fmt.Println("Account not found:", addr)
 			continue
@@ -163,7 +206,6 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 
 		// Check if the account is already a PeriodicVestingAccount
 		if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
-			fmt.Println("Account is not a PeriodicVestingAccount:", addr)
 			// Ensure the account exists and has a balance
 			currentBalances := k.GetAllBalances(ctx, addr)
 			if currentBalances.IsZero() {

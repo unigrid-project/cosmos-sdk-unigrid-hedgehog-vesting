@@ -248,7 +248,7 @@ type App struct {
 	ScopedTransferKeeper capabilitykeeper.ScopedKeeper
 	ScopedICAHostKeeper  capabilitykeeper.ScopedKeeper
 
-	UgdvestingKeeper ugdvestingmodulekeeper.Keeper
+	UgdvestingKeeper *ugdvestingmodulekeeper.Keeper
 	// this line is used by starport scaffolding # stargate/app/keeperDeclaration
 
 	// mm is the module manager
@@ -518,7 +518,7 @@ func New(
 		),
 	)
 
-	app.UgdvestingKeeper = *ugdvestingmodulekeeper.NewKeeper(
+	app.UgdvestingKeeper = ugdvestingmodulekeeper.NewKeeper(
 		appCodec,
 		keys[ugdvestingmoduletypes.StoreKey],
 		keys[ugdvestingmoduletypes.MemStoreKey],
@@ -527,7 +527,7 @@ func New(
 		app.AccountKeeper,
 	)
 
-	ugdvestingModule := ugdvestingmodule.NewAppModule(appCodec, &app.UgdvestingKeeper, app.AccountKeeper, app.BankKeeper)
+	ugdvestingModule := ugdvestingmodule.NewAppModule(appCodec, app.UgdvestingKeeper, app.AccountKeeper, app.BankKeeper)
 
 	// this line is used by starport scaffolding # stargate/app/keeperDefinition
 

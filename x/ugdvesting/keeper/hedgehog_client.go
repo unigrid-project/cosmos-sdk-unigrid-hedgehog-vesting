@@ -203,11 +203,6 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 			fmt.Println("Account not found:", addr)
 			continue
 		}
-		if account.GetPubKey() == nil {
-			fmt.Println("Public key is nil for address:", addrStr)
-			// Decide how to proceed. For now, we'll just skip this account.
-			continue
-		}
 
 		// Check if the account is already a PeriodicVestingAccount
 		if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
@@ -237,11 +232,14 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 				periods = append(periods, period)
 			}
 
-			pubKeyAny, err := codectypes.NewAnyWithValue(account.GetPubKey())
-			if err != nil {
-				// Handle the error
-				fmt.Println("Error packing public key into Any:", err)
-				return
+			var pubKeyAny *codectypes.Any
+			if account.GetPubKey() != nil {
+				var err error
+				pubKeyAny, err = codectypes.NewAnyWithValue(account.GetPubKey())
+				if err != nil {
+					fmt.Println("Error packing public key into Any:", err)
+					return
+				}
 			}
 
 			baseAccount := &authtypes.BaseAccount{

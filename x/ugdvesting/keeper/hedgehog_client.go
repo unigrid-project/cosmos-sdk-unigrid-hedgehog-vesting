@@ -209,13 +209,6 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 			continue
 		}
 
-		pubKeyAny, err := codectypes.NewAnyWithValue(account.GetPubKey())
-		if err != nil {
-			fmt.Println("Error packing public key into Any:", err)
-			fmt.Println("Skipping account:", addrStr)
-			return
-		}
-
 		// Check if the account is already a PeriodicVestingAccount
 		if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
 			// Ensure the account exists and has a balance

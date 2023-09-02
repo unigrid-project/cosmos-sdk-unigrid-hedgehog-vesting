@@ -206,52 +206,55 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 
 		// Check if the account is already a PeriodicVestingAccount
 		if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
-			// Ensure the account exists and has a balance
-			currentBalances := k.GetAllBalances(ctx, addr)
-			if currentBalances.IsZero() {
+			if baseAcc, ok := account.(*vestingtypes.DelayedVestingAccount); ok {
+				// Ensure the account exists and has a balance
+				currentBalances := k.GetAllBalances(ctx, addr)
+				if currentBalances.IsZero() {
 
-				return
-			}
-
-			startTime := ctx.BlockTime().Unix() // Current block time as start time
-
-			// Calculate the amount for each vesting period for each coin in currentBalances
-			amountPerPeriod := sdk.Coins{}
-			for _, coin := range currentBalances {
-				amount := coin.Amount.Quo(sdk.NewInt(10))
-				amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
-			}
-
-			// Create 10 vesting periods, each 1 minute apart
-			periods := vestingtypes.Periods{}
-			for i := 0; i < 10; i++ {
-				period := vestingtypes.Period{
-					Length: 60, // 60 seconds = 1 minute
-					Amount: amountPerPeriod,
-				}
-				periods = append(periods, period)
-			}
-
-			var pubKeyAny *codectypes.Any
-			if account.GetPubKey() != nil {
-				var err error
-				pubKeyAny, err = codectypes.NewAnyWithValue(account.GetPubKey())
-				if err != nil {
-					fmt.Println("Error packing public key into Any:", err)
 					return
 				}
-			}
 
-			baseAccount := &authtypes.BaseAccount{
-				Address:       account.GetAddress().String(),
-				PubKey:        pubKeyAny,
-				AccountNumber: account.GetAccountNumber(),
-				Sequence:      account.GetSequence(),
-			}
+				startTime := ctx.BlockTime().Unix() // Current block time as start time
 
-			// Create the PeriodicVestingAccount
-			vestingAcc := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTime, periods)
-			k.SetAccount(ctx, vestingAcc)
+				// Calculate the amount for each vesting period for each coin in currentBalances
+				amountPerPeriod := sdk.Coins{}
+				for _, coin := range currentBalances {
+					amount := coin.Amount.Quo(sdk.NewInt(10))
+					amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
+				}
+
+				// Create 10 vesting periods, each 1 minute apart
+				periods := vestingtypes.Periods{}
+				for i := 0; i < 10; i++ {
+					period := vestingtypes.Period{
+						Length: 60, // 60 seconds = 1 minute
+						Amount: amountPerPeriod,
+					}
+					periods = append(periods, period)
+				}
+
+				var pubKeyAny *codectypes.Any
+				if baseAcc.GetPubKey() != nil {
+					var err error
+					pubKeyAny, err = codectypes.NewAnyWithValue(baseAcc.GetPubKey())
+					if err != nil {
+						fmt.Println("Error packing public key into Any:", err)
+						return
+					}
+				}
+
+				baseAccount := &authtypes.BaseAccount{
+					Address:       baseAcc.GetAddress().String(),
+					PubKey:        pubKeyAny,
+					AccountNumber: baseAcc.GetAccountNumber(),
+					Sequence:      baseAcc.GetSequence(),
+				}
+
+				// Create the PeriodicVestingAccount
+				vestingAcc := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTime, periods)
+				fmt.Println("Created PeriodicVestingAccount:", vestingAcc)
+				k.SetAccount(ctx, vestingAcc)
+			}
 		}
 
 		// Mark the address as processed

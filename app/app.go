@@ -527,7 +527,7 @@ func New(
 		app.AccountKeeper,
 	)
 
-	ugdvestingModule := ugdvestingmodule.NewAppModule(appCodec, app.UgdvestingKeeper, app.AccountKeeper, app.BankKeeper)
+	ugdvestingModule := ugdvestingmodule.NewAppModule(appCodec, &app.UgdvestingKeeper, app.AccountKeeper, app.BankKeeper)
 
 	// this line is used by starport scaffolding # stargate/app/keeperDefinition
 

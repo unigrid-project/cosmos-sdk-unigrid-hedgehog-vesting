@@ -14,13 +14,12 @@ import (
 
 type (
 	Keeper struct {
-		cdc          codec.BinaryCodec
-		storeKey     storetypes.StoreKey
-		memKey       storetypes.StoreKey
-		paramstore   paramtypes.Subspace
-		authKeeper   types.AccountKeeper
-		bankKeeper   types.BankKeeper
-		VestingCache *VestingCache
+		cdc        codec.BinaryCodec
+		storeKey   storetypes.StoreKey
+		memKey     storetypes.StoreKey
+		paramstore paramtypes.Subspace
+		authKeeper types.AccountKeeper
+		bankKeeper types.BankKeeper
 	}
 )
 
@@ -43,6 +42,7 @@ func NewKeeper(
 		memKey:     memKey,
 		paramstore: ps,
 		authKeeper: ak,
+		bankKeeper: bk,
 	}
 
 	return k
@@ -65,6 +65,10 @@ func (k Keeper) SetAccount(ctx sdk.Context, acc authtypes.AccountI) {
 }
 
 func (k Keeper) GetAllBalances(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins {
+	if k.bankKeeper == nil {
+		fmt.Println("bankKeeper is nil")
+		return sdk.Coins{}
+	}
 	return k.bankKeeper.GetAllBalances(ctx, addr)
 }
 

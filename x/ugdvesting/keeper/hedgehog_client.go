@@ -207,10 +207,11 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 		// Check if the account is already a PeriodicVestingAccount
 		if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
 			// Ensure the account exists and has a balance
-			// currentBalances := k.GetAllBalances(ctx, addr)
-			// if currentBalances.IsZero() {
-			// 	continue
-			// }
+			currentBalances := k.GetAllBalances(ctx, addr)
+			if currentBalances.IsZero() {
+
+				return
+			}
 
 			startTime := ctx.BlockTime().Unix() // Current block time as start time
 
@@ -260,78 +261,6 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 	}
 }
 
-func (vc *VestingCache) FetchBalancesAndCreateVestingAccounts(ctx sdk.Context, k Keeper) {
-	vc.mu.RLock()
-	defer vc.mu.RUnlock()
-
-	for addrStr := range vc.vestings {
-		addr, err := sdk.AccAddressFromBech32(addrStr)
-		if err != nil {
-			fmt.Println("Error converting address:", err)
-			continue
-		}
-
-		// Check if the address has been processed
-		if k.HasProcessedAddress(ctx, addr) {
-			continue
-		}
-
-		// Fetch the account information
-		account := k.GetAccount(ctx, addr)
-		if account == nil {
-			fmt.Println("Account not found:", addr)
-			continue
-		}
-
-		// Fetch the balance from the account
-		currentBalances := sdk.Coins{}
-		for _, coin := range account.GetCoins() {
-			currentBalances = append(currentBalances, sdk.NewCoin(coin.Denom, coin.Amount))
-		}
-
-		// Check if the account is already a PeriodicVestingAccount
-		if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
-			// Ensure the account exists and has a balance
-			if currentBalances.IsZero() {
-				continue
-			}
-
-			startTime := ctx.BlockTime().Unix() // Current block time as start time
-
-			// Create 10 vesting periods, each 1 minute apart
-			periods := vestingtypes.Periods{}
-			for i := 0; i < 10; i++ {
-				period := vestingtypes.Period{
-					Length: 60, // 60 seconds = 1 minute
-					Amount: currentBalances,
-				}
-				periods = append(periods, period)
-			}
-
-			pubKeyAny, err := codectypes.NewAnyWithValue(account.GetPubKey())
-			if err != nil {
-				// Handle the error
-				fmt.Println("Error packing public key into Any:", err)
-				return
-			}
-
-			baseAccount := &authtypes.BaseAccount{
-				Address:       account.GetAddress().String(),
-				PubKey:        pubKeyAny,
-				AccountNumber: account.GetAccountNumber(),
-				Sequence:      account.GetSequence(),
-			}
-
-			// Create the PeriodicVestingAccount
-			vestingAcc := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTime, periods)
-			k.SetAccount(ctx, vestingAcc)
-		}
-
-		// Mark the address as processed
-		k.SetProcessedAddress(ctx, addr)
-	}
-}
-``
 func ConvertStringToAcc(address string) (sdk.AccAddress, error) {
 	fmt.Println("Converting address:", address)
 	return sdk.AccAddressFromBech32(address)

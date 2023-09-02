@@ -7,5 +7,5 @@ import (
 )
 
 func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
-	keeper.GetCache(ctx, am.keeper)
+	keeper.GetCache(ctx, *am.keeper)
 }

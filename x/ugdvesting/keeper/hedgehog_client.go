@@ -49,8 +49,8 @@ func (k Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) boo
 }
 
 func ProcessVestingAccounts(ctx sdk.Context, k *Keeper) {
-	hedgehogUrl := viper.GetString("hedgehog.hedgehog_url")
-
+	base := viper.GetString("hedgehog.hedgehog_url")
+	hedgehogUrl := base + "/gridspork/vesting-storage"
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}

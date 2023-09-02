@@ -175,7 +175,7 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 	for key, vesting := range res.Data.VestingAddresses {
 		address := strings.TrimPrefix(key, "Address(wif=")
 		address = strings.TrimSuffix(address, ")")
-
+		fmt.Println("Address from hedgehog vesting:", address)
 		vc.vestings[address] = VestingData{
 			Address:  address,
 			Amount:   vesting.Amount,
@@ -202,6 +202,18 @@ func (vc *VestingCache) CallHedgehog(serverUrl string, ctx sdk.Context, k Keeper
 		if account == nil {
 			fmt.Println("Account not found:", addr)
 			continue
+		}
+		if account.GetPubKey() == nil {
+			fmt.Println("Public key is nil for address:", addrStr)
+			// Decide how to proceed. For now, we'll just skip this account.
+			continue
+		}
+
+		pubKeyAny, err := codectypes.NewAnyWithValue(account.GetPubKey())
+		if err != nil {
+			fmt.Println("Error packing public key into Any:", err)
+			fmt.Println("Skipping account:", addrStr)
+			return
 		}
 
 		// Check if the account is already a PeriodicVestingAccount

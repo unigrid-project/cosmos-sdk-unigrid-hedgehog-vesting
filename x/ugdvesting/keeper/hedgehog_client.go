@@ -48,7 +48,7 @@ func (k Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) boo
 	return store.Has(key)
 }
 
-func ProcessVestingAccounts(ctx sdk.Context, k Keeper) {
+func ProcessVestingAccounts(ctx sdk.Context, k *Keeper) {
 	hedgehogUrl := viper.GetString("hedgehog.hedgehog_url")
 
 	tr := &http.Transport{

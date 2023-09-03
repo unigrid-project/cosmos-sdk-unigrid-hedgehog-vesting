@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/cometbft/cometbft/libs/log"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -20,6 +21,7 @@ type (
 		paramstore paramtypes.Subspace
 		authKeeper types.AccountKeeper
 		bankKeeper types.BankKeeper
+		mu         sync.Mutex
 	}
 )
 

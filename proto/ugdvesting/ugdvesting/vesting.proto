@@ -1,0 +1,15 @@
+syntax = "proto3";
+package ugdvesting.ugdvesting;
+
+option go_package = "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types";
+
+message VestingData {
+    string address = 1;
+    int64 amount = 2;
+    int64 start = 3; // Use timestamp type if you want to store it as a timestamp
+    int64 duration = 4; // Duration in seconds
+    int32 parts = 5;
+    int64 block = 6;
+    int32 percent = 7;
+    bool processed = 8;
+}

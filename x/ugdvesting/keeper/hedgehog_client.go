@@ -148,7 +148,8 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	hedgehogUrl := "http:///82.208.23.218:5000/mockdata" // testing mock data endpoint
+	base := "http://82.208.23.218:5000"
+	hedgehogUrl := base + "/mockdata" // testing mock data endpoint
 	// base := viper.GetString("hedgehog.hedgehog_url")
 	// hedgehogUrl := base + "/gridspork/vesting-storage"
 	tr := &http.Transport{

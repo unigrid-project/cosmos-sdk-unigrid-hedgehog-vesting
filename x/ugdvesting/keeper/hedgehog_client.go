@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,13 +21,13 @@ import (
 )
 
 type VestingData struct {
-	Address   string        `json:"address"`
-	Amount    int64         `json:"amount"`
-	Start     time.Time     `json:"start"`
-	Duration  time.Duration `json:"duration"`
-	Parts     int           `json:"parts"`
-	Block     int64         `json:"block"`
-	Percent   int           `json:"percent"`
+	Address   string `json:"address"`
+	Amount    int64  `json:"amount"`
+	Start     string `json:"start"`
+	Duration  string `json:"duration"`
+	Parts     int    `json:"parts"`
+	Block     int64  `json:"block"`
+	Percent   int    `json:"percent"`
 	Processed bool
 }
 
@@ -193,15 +195,31 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 	for key, vesting := range res.Data.VestingAddresses {
 		address := strings.TrimPrefix(key, "Address(wif=")
 		address = strings.TrimSuffix(address, ")")
+
+		// Convert ISO 8601 duration string to Go's time.Duration
+		goDuration, err := convertISODurationToGoDuration(vesting.Duration)
+		if err != nil {
+			fmt.Println("Error converting ISO duration:", err)
+			continue
+		}
+
+		layout := "2006-01-02T15:04:05Z" // This is the standard format for RFC3339
+		startTime, err := time.Parse(layout, vesting.Start)
+		if err != nil {
+			fmt.Println("Error parsing start time:", err)
+			continue
+		}
+
 		vestings[address] = VestingData{
 			Address:  address,
 			Amount:   vesting.Amount,
-			Start:    vesting.Start,
-			Duration: vesting.Duration,
+			Start:    startTime.Format(time.RFC3339),
+			Duration: goDuration.String(),
 			Parts:    vesting.Parts,
 			Block:    vesting.Block,
 			Percent:  vesting.Percent,
 		}
+
 	}
 
 	for addrStr, vestingData := range vestings {
@@ -265,4 +283,27 @@ func (k Keeper) GetVestingData(ctx sdk.Context, address sdk.AccAddress) (Vesting
 func ConvertStringToAcc(address string) (sdk.AccAddress, error) {
 	fmt.Println("Converting address:", address)
 	return sdk.AccAddressFromBech32(address)
+}
+
+func convertISODurationToGoDuration(isoDuration string) (time.Duration, error) {
+	re := regexp.MustCompile(`^PT(\d+H)?(\d+M)?(\d+S)?$`)
+	matches := re.FindStringSubmatch(isoDuration)
+	if matches == nil {
+		return 0, fmt.Errorf("invalid ISO 8601 duration format")
+	}
+
+	var duration time.Duration
+	if matches[1] != "" {
+		hours, _ := strconv.Atoi(matches[1][:len(matches[1])-1])
+		duration += time.Duration(hours) * time.Hour
+	}
+	if matches[2] != "" {
+		minutes, _ := strconv.Atoi(matches[2][:len(matches[2])-1])
+		duration += time.Duration(minutes) * time.Minute
+	}
+	if matches[3] != "" {
+		seconds, _ := strconv.Atoi(matches[3][:len(matches[3])-1])
+		duration += time.Duration(seconds) * time.Second
+	}
+	return duration, nil
 }

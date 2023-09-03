@@ -44,13 +44,13 @@ type HedgehogData struct {
 
 func (k Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
 	store := ctx.KVStore(k.storeKey)
-	key := append(ugdtypes.VestingKey, address.Bytes()...)
+	key := append(ugdtypes.VestingDataKey, address.Bytes()...)
 	store.Set(key, []byte("processed"))
 }
 
 func (k Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) bool {
 	store := ctx.KVStore(k.storeKey)
-	key := append(ugdtypes.VestingKey, address.Bytes()...)
+	key := append(ugdtypes.VestingDataKey, address.Bytes()...)
 	return store.Has(key)
 }
 

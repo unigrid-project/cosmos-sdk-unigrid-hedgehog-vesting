@@ -55,6 +55,8 @@ func (k Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) boo
 }
 
 func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
+	k.mu.Lock()
+	defer k.mu.Unlock() // Using defer to ensure the mutex is always unlocked
 	currentHeight := ctx.BlockHeight()
 	store := ctx.KVStore(k.storeKey)
 	iterator := sdk.KVStorePrefixIterator(store, ugdtypes.VestingDataKey)
@@ -88,7 +90,8 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 				if baseAcc, ok := account.(*vestingtypes.DelayedVestingAccount); ok {
 					currentBalances := k.GetAllBalances(ctx, addr)
 					if currentBalances.IsZero() {
-						return
+						fmt.Println("No balances found for address:", addr)
+						continue
 					}
 
 					startTime := ctx.BlockTime().Unix()
@@ -113,7 +116,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						pubKeyAny, err = codectypes.NewAnyWithValue(baseAcc.GetPubKey())
 						if err != nil {
 							fmt.Println("Error packing public key into Any:", err)
-							return
+							continue
 						}
 					}
 
@@ -126,9 +129,6 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					vestingAcc := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTime, periods)
 
-					k.mu.Lock()
-					defer k.mu.Unlock() // Using defer to ensure the mutex is always unlocked
-
 					k.SetAccount(ctx, vestingAcc)
 					k.SetProcessedAddress(ctx, addr)
 					fmt.Println("Converted address to PeriodicVestingAccount:", addr)
@@ -137,10 +137,11 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					bz, err := proto.Marshal(&data)
 					if err != nil {
 						fmt.Println("Error marshalling data:", err)
-						return // or continue, depending on whether you want to skip the rest of the loop or exit the function
+						continue
 					}
 
 					store.Set(iterator.Key(), bz)
+					fmt.Println("Processed vesting data:")
 				}
 			}
 		}
@@ -294,6 +295,16 @@ func (k Keeper) GetVestingData(ctx sdk.Context, address sdk.AccAddress) (Vesting
 	}
 
 	return data, true
+}
+
+// USED FOR DEBUGGING TO CLEAR THE VESTING DATA STORE
+// TODO: REMOVE FOR MAINNET
+func (k Keeper) ClearVestingDataStore(ctx sdk.Context) {
+	store := ctx.KVStore(k.storeKey)
+	iterator := sdk.KVStorePrefixIterator(store, ugdtypes.VestingDataKey)
+	for ; iterator.Valid(); iterator.Next() {
+		store.Delete(iterator.Key())
+	}
 }
 
 func ConvertStringToAcc(address string) (sdk.AccAddress, error) {

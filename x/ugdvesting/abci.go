@@ -16,4 +16,8 @@ func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
 		// Call the function to process the vesting accounts
 		k.ProcessVestingAccounts(ctx)
 	}
+	// FORE TESTING ONLY TODO: REMOVE OR DISABLE IN PRODUCTION
+	if ctx.BlockHeight() == 9 {
+		k.ClearVestingDataStore(ctx)
+	}
 }

@@ -234,11 +234,6 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			continue
 		}
 
-		account := k.GetAccount(ctx, addr)
-		if account == nil {
-			fmt.Println("Account not found:", addr)
-			continue
-		}
 		fmt.Println("vestingData set:", vestingData)
 		// Store the vesting data for processing in ProcessPendingVesting
 		k.SetVestingData(ctx, addr, vestingData)

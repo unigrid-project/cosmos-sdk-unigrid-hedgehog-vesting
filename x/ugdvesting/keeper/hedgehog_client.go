@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -233,19 +233,40 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			fmt.Println("Address already processed:", addr)
 			continue
 		}
-
+		startTime, err := time.Parse(time.RFC3339, vestingData.Start)
+		if err != nil {
+			fmt.Println("Error parsing start time:", err)
+			continue
+		}
+		startInt64 := startTime.Unix()
+		duration, err := time.ParseDuration(vestingData.Duration)
+		if err != nil {
+			fmt.Println("Error parsing duration:", err)
+			continue
+		}
+		durationInt64 := duration.Nanoseconds()
+		ugdVestingData := &ugdtypes.VestingData{
+			Address:   vestingData.Address,
+			Amount:    vestingData.Amount,
+			Start:     startInt64,
+			Duration:  durationInt64,
+			Parts:     int32(vestingData.Parts), // Assuming the Parts in ugdtypes.VestingData is int32
+			Block:     vestingData.Block,
+			Percent:   int32(vestingData.Percent), // Assuming the Percent in ugdtypes.VestingData is int32
+			Processed: vestingData.Processed,
+		}
 		fmt.Println("vestingData set:", vestingData)
 		// Store the vesting data for processing in ProcessPendingVesting
-		k.SetVestingData(ctx, addr, vestingData)
+		k.SetVestingData(ctx, addr, ugdVestingData)
 	}
 }
 
-func (k Keeper) SetVestingData(ctx sdk.Context, address sdk.AccAddress, data VestingData) {
+func (k Keeper) SetVestingData(ctx sdk.Context, address sdk.AccAddress, data *ugdtypes.VestingData) {
 	store := ctx.KVStore(k.storeKey)
 	key := append(ugdtypes.VestingDataKey, address.Bytes()...) // Assuming VestingDataKey is a prefix for vesting data
 
 	// Marshal data to bytes
-	b, err := json.Marshal(data)
+	b, err := proto.Marshal(data)
 	if err != nil {
 		// Handle error, maybe log it or return
 		fmt.Println("Error marshaling vesting data:", err)

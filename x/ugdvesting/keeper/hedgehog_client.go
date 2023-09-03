@@ -92,14 +92,14 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					startTime := ctx.BlockTime().Unix()
 					amountPerPeriod := sdk.Coins{}
 					for _, coin := range currentBalances {
-						amount := coin.Amount.Quo(sdk.NewInt(10))
+						amount := coin.Amount.Quo(sdk.NewInt(int64(data.Parts))) // Use the parts from data
 						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
 					}
 
 					periods := vestingtypes.Periods{}
-					for i := 0; i < 10; i++ {
+					for i := 0; i < int(data.Parts); i++ { // Cast data.Parts to int
 						period := vestingtypes.Period{
-							Length: 60,
+							Length: 60, // Adjust this if needed
 							Amount: amountPerPeriod,
 						}
 						periods = append(periods, period)

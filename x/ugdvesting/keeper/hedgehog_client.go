@@ -22,7 +22,7 @@ import (
 
 type VestingData struct {
 	Address   string `json:"address"`
-	Amount    int64  `json:"amount"`
+	Amount    int32  `json:"amount"`
 	Start     string `json:"start"`
 	Duration  string `json:"duration"`
 	Parts     int    `json:"parts"`
@@ -93,21 +93,54 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						fmt.Println("No balances found for address:", addr)
 						continue
 					}
-
+					// TODO: If we want to DELAY the vesting, we can set the startTime to a future time
+					// currently it's set to the current block time when the vesting account is created
 					startTime := ctx.BlockTime().Unix()
-					amountPerPeriod := sdk.Coins{}
+					// Calculate the TGE amount
+					tgeAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
-						amount := coin.Amount.Quo(sdk.NewInt(int64(data.Parts))) // Use the parts from data
-						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
+
+						amount := coin.Amount.Mul(sdk.NewInt(int64(data.Percent))).Quo(sdk.NewInt(100)) // 3% of total balance
+						fmt.Println("ELV:", amount)
+						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
 					}
 
+					// Calculate the regular vesting amount per period
+					amountPerPeriod := sdk.Coins{}
+					for _, coin := range currentBalances {
+						// Subtract the TGE amount from the total balance before calculating the regular vesting amount
+						remainingAmount := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
+						fmt.Println("Remaining amount:", remainingAmount)
+						amount := remainingAmount.Quo(sdk.NewInt(int64(data.Parts - data.Cliff - 1))) // Subtracting the TGE and cliff periods
+						fmt.Println("Amount minus TGE and Cliff:", amount)
+						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
+						fmt.Println("Amount per period:", amountPerPeriod)
+					}
+
+					// Create the vesting periods
 					periods := vestingtypes.Periods{}
-					for i := 0; i < int(data.Parts); i++ { // Cast data.Parts to int
-						period := vestingtypes.Period{
-							Length: 60, // Adjust this if needed
+					//const periodTime = 2592000 // This is roughly the number of seconds in a month
+					const periodTime = 60 // TESTING
+					// Add the TGE period
+					periods = append(periods, vestingtypes.Period{
+						Length: periodTime, // Adjust this if needed
+						Amount: tgeAmount,
+					})
+
+					// Add the cliff periods with 0 tokens
+					for i := 1; i <= int(data.Cliff); i++ {
+						periods = append(periods, vestingtypes.Period{
+							Length: periodTime,  // Adjust this if needed
+							Amount: sdk.Coins{}, // 0 tokens
+						})
+					}
+
+					// Add the regular vesting periods after the cliff
+					for i := int(data.Cliff) + 1; i < int(data.Parts); i++ {
+						periods = append(periods, vestingtypes.Period{
+							Length: periodTime, // Adjust this if needed
 							Amount: amountPerPeriod,
-						}
-						periods = append(periods, period)
+						})
 					}
 
 					var pubKeyAny *codectypes.Any
@@ -141,7 +174,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					}
 
 					store.Set(iterator.Key(), bz)
-					fmt.Println("Processed vesting data:")
+					fmt.Println("Processed vesting data:", periods)
 				}
 			}
 		}

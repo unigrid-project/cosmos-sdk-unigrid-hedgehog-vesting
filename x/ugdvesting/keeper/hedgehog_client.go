@@ -127,7 +127,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					const periodTime = 60 // TESTING
 					// TGE Period
 					periods = append(periods, vestingtypes.Period{
-						Length: periodTime, // 30 days in seconds
+						Length: periodTime,
 						Amount: tgeAmount,
 					})
 
@@ -135,15 +135,16 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					zeroAmount := sdk.NewCoin("ugd", sdk.NewInt(0)) // "ugd" is the denom
 					for i := 1; i <= int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
-							Length: periodTime, // 30 days in seconds
+							Length: periodTime,
 							Amount: sdk.Coins{zeroAmount},
 						})
+						fmt.Println("Adding cliff period with 0 amount:", sdk.Coins{zeroAmount})
 					}
 
 					// Regular Vesting Periods after the cliff
 					for i := int(data.Cliff) + 1; i < int(data.Parts); i++ {
 						periods = append(periods, vestingtypes.Period{
-							Length: periodTime, // 30 days in seconds
+							Length: periodTime,
 							Amount: amountPerPeriod,
 						})
 					}

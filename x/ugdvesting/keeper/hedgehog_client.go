@@ -111,8 +111,12 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						// Subtract the TGE amount from the total balance before calculating the regular vesting amount
 						remainingAmount := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
 						fmt.Println("Remaining amount:", remainingAmount)
-						amount := remainingAmount.Quo(sdk.NewInt(int64(data.Parts - data.Cliff)))
-						fmt.Println("Amount minus TGE and Cliff:", amount)
+
+						// Calculate the number of periods where vesting occurs after the cliff
+						vestingPeriods := int(data.Parts) - int(data.Cliff) - 1
+						amount := remainingAmount.Quo(sdk.NewInt(int64(vestingPeriods)))
+
+						fmt.Println("Amount for each period after TGE and Cliff:", amount)
 						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
 						fmt.Println("Amount per period:", amountPerPeriod)
 					}
@@ -143,6 +147,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 							Amount: amountPerPeriod,
 						})
 					}
+					fmt.Println("Created vesting periods:", periods)
 
 					var pubKeyAny *codectypes.Any
 					if baseAcc.GetPubKey() != nil {

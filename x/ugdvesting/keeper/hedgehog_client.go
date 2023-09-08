@@ -22,7 +22,7 @@ import (
 
 type VestingData struct {
 	Address   string `json:"address"`
-	Amount    int32  `json:"amount"`
+	Amount    int64  `json:"amount"`
 	Start     string `json:"start"`
 	Duration  string `json:"duration"`
 	Parts     int    `json:"parts"`

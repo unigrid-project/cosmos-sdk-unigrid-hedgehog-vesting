@@ -111,7 +111,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						// Subtract the TGE amount from the total balance before calculating the regular vesting amount
 						remainingAmount := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
 						fmt.Println("Remaining amount:", remainingAmount)
-						amount := remainingAmount.Quo(sdk.NewInt(int64(data.Parts - data.Cliff - 1))) // Subtracting the TGE and cliff periods
+						amount := remainingAmount.Quo(sdk.NewInt(int64(data.Parts - data.Cliff)))
 						fmt.Println("Amount minus TGE and Cliff:", amount)
 						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
 						fmt.Println("Amount per period:", amountPerPeriod)
@@ -121,23 +121,23 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					periods := vestingtypes.Periods{}
 					//const periodTime = 2592000 // This is roughly the number of seconds in a month
 					const periodTime = 60 // TESTING
+
 					// TGE Period
 					periods = append(periods, vestingtypes.Period{
 						Length: periodTime, // 30 days in seconds
 						Amount: tgeAmount,
 					})
 
-					// Cliff Periods with 0 tokens
-					zeroAmount := sdk.NewCoin("ugd", sdk.NewInt(0)) // "ugd" is the denom
-					for i := 1; i <= int(data.Cliff); i++ {
-						periods = append(periods, vestingtypes.Period{
-							Length: periodTime, // 30 days in seconds
-							Amount: sdk.Coins{zeroAmount},
-						})
-					}
+					// Adjusted Length for the first vesting period after TGE to account for the cliff
+					// Adjusted Length for the first vesting period after TGE to account for the cliff
+					firstVestingLength := periodTime * (1 + int(data.Cliff))
+					periods = append(periods, vestingtypes.Period{
+						Length: int64(firstVestingLength), // Cast to int64
+						Amount: amountPerPeriod,
+					})
 
-					// Regular Vesting Periods after the cliff
-					for i := int(data.Cliff) + 1; i < int(data.Parts); i++ {
+					// Regular Vesting Periods after the first adjusted period
+					for i := 2; i < int(data.Parts); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: periodTime, // 30 days in seconds
 							Amount: amountPerPeriod,

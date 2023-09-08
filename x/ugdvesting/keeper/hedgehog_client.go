@@ -111,15 +111,15 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					for _, coin := range currentBalances {
 						// Subtract the TGE amount from the total balance before calculating the regular vesting amount
 						remainingAmount := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
-						fmt.Println("Remaining amount:", remainingAmount)
+						//fmt.Println("Remaining amount:", remainingAmount)
 
 						// Calculate the number of periods where vesting occurs after the cliff
 						vestingPeriods := int(data.Parts) - int(data.Cliff) - 1
 						amount := remainingAmount.Quo(sdk.NewInt(int64(vestingPeriods)))
 
-						fmt.Println("Amount for each period after TGE and Cliff:", amount)
+						//fmt.Println("Amount for each period after TGE and Cliff:", amount)
 						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
-						fmt.Println("Amount per period:", amountPerPeriod)
+						//fmt.Println("Amount per period:", amountPerPeriod)
 					}
 
 					// Create the vesting periods
@@ -133,15 +133,12 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					})
 
 					// Cliff Periods with 0 tokens
-					fmt.Println("Value of data.Cliff:", data.Cliff)
-
 					zeroAmount := sdk.NewCoin("ugd", sdk.NewInt(0)) // "ugd" is the denom
 					for i := 1; i <= int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: periodTime,
 							Amount: sdk.Coins{zeroAmount},
 						})
-						fmt.Println("Adding cliff period with 0 amount:", sdk.Coins{zeroAmount})
 					}
 
 					// Regular Vesting Periods after the cliff
@@ -151,7 +148,6 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 							Amount: amountPerPeriod,
 						})
 					}
-					fmt.Println("Created vesting periods:", periods)
 
 					var pubKeyAny *codectypes.Any
 					if baseAcc.GetPubKey() != nil {
@@ -174,7 +170,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					k.SetAccount(ctx, vestingAcc)
 					k.SetProcessedAddress(ctx, addr)
-					fmt.Println("Converted address to PeriodicVestingAccount:", addr)
+					//fmt.Println("Converted address to PeriodicVestingAccount:", addr)
 					// Mark the data as processed
 					data.Processed = true
 					bz, err := proto.Marshal(&data)
@@ -184,7 +180,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					}
 
 					store.Set(iterator.Key(), bz)
-					fmt.Println("Processed vesting data:", periods)
+					fmt.Println("Processed vesting data:")
 				}
 			}
 		}

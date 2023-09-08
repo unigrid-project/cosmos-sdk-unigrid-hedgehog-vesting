@@ -5,7 +5,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-const startBlockHeight = 50 // example block height for testing
+const startBlockHeight = 50 // example block height for testing vestsing start
 
 func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
 	k := am.keeper

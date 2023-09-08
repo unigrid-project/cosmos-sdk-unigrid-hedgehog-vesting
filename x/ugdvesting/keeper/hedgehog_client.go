@@ -93,15 +93,15 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						fmt.Println("No balances found for address:", addr)
 						continue
 					}
+
 					// TODO: If we want to DELAY the vesting, we can set the startTime to a future time
 					// currently it's set to the current block time when the vesting account is created
 					startTime := ctx.BlockTime().Unix()
+
 					// Calculate the TGE amount
 					tgeAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
-
 						amount := coin.Amount.Mul(sdk.NewInt(int64(data.Percent))).Quo(sdk.NewInt(100)) // 3% of total balance
-						fmt.Println("ELV:", amount)
 						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
 					}
 
@@ -123,14 +123,14 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					const periodTime = 60 // TESTING
 					// Add the TGE period
 					periods = append(periods, vestingtypes.Period{
-						Length: periodTime, // Adjust this if needed
+						Length: periodTime, // 30 days in seconds
 						Amount: tgeAmount,
 					})
 
 					// Add the cliff periods with 0 tokens
 					for i := 1; i <= int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
-							Length: periodTime,  // Adjust this if needed
+							Length: periodTime,  // 30 days in seconds
 							Amount: sdk.Coins{}, // 0 tokens
 						})
 					}
@@ -138,7 +138,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					// Add the regular vesting periods after the cliff
 					for i := int(data.Cliff) + 1; i < int(data.Parts); i++ {
 						periods = append(periods, vestingtypes.Period{
-							Length: periodTime, // Adjust this if needed
+							Length: periodTime, // 30 days in seconds
 							Amount: amountPerPeriod,
 						})
 					}

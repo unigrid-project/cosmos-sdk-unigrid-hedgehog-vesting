@@ -28,6 +28,7 @@ type VestingData struct {
 	Parts     int    `json:"parts"`
 	Block     int64  `json:"block"`
 	Percent   int    `json:"percent"`
+	Cliff     int    `json:"cliff"`
 	Processed bool
 }
 
@@ -132,6 +133,8 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					})
 
 					// Cliff Periods with 0 tokens
+					fmt.Println("Value of data.Cliff:", data.Cliff)
+
 					zeroAmount := sdk.NewCoin("ugd", sdk.NewInt(0)) // "ugd" is the denom
 					for i := 1; i <= int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
@@ -259,6 +262,7 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			Parts:    vesting.Parts,
 			Block:    vesting.Block,
 			Percent:  vesting.Percent,
+			Cliff:    vesting.Cliff,
 		}
 
 	}
@@ -291,9 +295,10 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			Amount:    vestingData.Amount,
 			Start:     startInt64,
 			Duration:  durationInt64,
-			Parts:     int32(vestingData.Parts), // Assuming the Parts in ugdtypes.VestingData is int32
+			Parts:     int32(vestingData.Parts),
 			Block:     vestingData.Block,
-			Percent:   int32(vestingData.Percent), // Assuming the Percent in ugdtypes.VestingData is int32
+			Percent:   int32(vestingData.Percent),
+			Cliff:     int32(vestingData.Cliff),
 			Processed: vestingData.Processed,
 		}
 		fmt.Println("vestingData set:", vestingData)

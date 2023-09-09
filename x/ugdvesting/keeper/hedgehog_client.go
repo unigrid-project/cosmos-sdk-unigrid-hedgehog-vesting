@@ -24,7 +24,7 @@ type VestingData struct {
 	Address   string `json:"address"`
 	Amount    int64  `json:"amount"`
 	Start     string `json:"start"`
-	Duration  string `json:"duration"`
+	Duration  int64  `json:"duration"`
 	Parts     int    `json:"parts"`
 	Block     int64  `json:"block"`
 	Percent   int    `json:"percent"`
@@ -124,8 +124,7 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					// Create the vesting periods
 					periods := vestingtypes.Periods{}
-					//const periodTime = 2592000 // This is roughly the number of seconds in a month
-					const periodTime = 60 // TESTING
+					periodTime := data.Duration
 					// TGE Period
 					periods = append(periods, vestingtypes.Period{
 						Length: periodTime,
@@ -236,13 +235,6 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 		address := strings.TrimPrefix(key, "Address(wif=")
 		address = strings.TrimSuffix(address, ")")
 
-		// Convert ISO 8601 duration string to Go's time.Duration
-		goDuration, err := convertISODurationToGoDuration(vesting.Duration)
-		if err != nil {
-			fmt.Println("Error converting ISO duration:", err)
-			continue
-		}
-
 		layout := "2006-01-02T15:04:05Z" // This is the standard format for RFC3339
 		startTime, err := time.Parse(layout, vesting.Start)
 		if err != nil {
@@ -254,7 +246,7 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			Address:  address,
 			Amount:   vesting.Amount,
 			Start:    startTime.Format(time.RFC3339),
-			Duration: goDuration.String(),
+			Duration: vesting.Duration,
 			Parts:    vesting.Parts,
 			Block:    vesting.Block,
 			Percent:  vesting.Percent,
@@ -280,17 +272,12 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			continue
 		}
 		startInt64 := startTime.Unix()
-		duration, err := time.ParseDuration(vestingData.Duration)
-		if err != nil {
-			fmt.Println("Error parsing duration:", err)
-			continue
-		}
-		durationInt64 := duration.Nanoseconds()
+
 		ugdVestingData := &ugdtypes.VestingData{
 			Address:   vestingData.Address,
 			Amount:    vestingData.Amount,
 			Start:     startInt64,
-			Duration:  durationInt64,
+			Duration:  vestingData.Duration,
 			Parts:     int32(vestingData.Parts),
 			Block:     vestingData.Block,
 			Percent:   int32(vestingData.Percent),

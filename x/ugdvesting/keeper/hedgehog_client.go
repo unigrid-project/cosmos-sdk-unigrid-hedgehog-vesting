@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +15,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
+	durationLib "github.com/sosodev/duration"
+	"github.com/spf13/viper"
 	ugdtypes "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
@@ -24,7 +24,7 @@ type VestingData struct {
 	Address   string `json:"address"`
 	Amount    int64  `json:"amount"`
 	Start     string `json:"start"`
-	Duration  int64  `json:"duration"`
+	Duration  string `json:"duration"`
 	Parts     int    `json:"parts"`
 	Block     int64  `json:"block"`
 	Percent   int    `json:"percent"`
@@ -189,10 +189,10 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	base := "http://82.208.23.218:5000"
-	hedgehogUrl := base + "/mockdata" // testing mock data endpoint
-	// base := viper.GetString("hedgehog.hedgehog_url")
-	// hedgehogUrl := base + "/gridspork/vesting-storage"
+	//base := "http://82.208.23.218:5000"
+	//hedgehogUrl := base + "/mockdata" // testing mock data endpoint
+	base := viper.GetString("hedgehog.hedgehog_url")
+	hedgehogUrl := base + "/gridspork/vesting-storage"
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -272,12 +272,17 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			continue
 		}
 		startInt64 := startTime.Unix()
+		vestingDurationLib, err := durationLib.Parse(vestingData.Duration)
+		if err != nil {
+			panic(err)
+		}
+		vestingDuration := int64(vestingDurationLib.ToTimeDuration().Seconds())
 
 		ugdVestingData := &ugdtypes.VestingData{
 			Address:   vestingData.Address,
 			Amount:    vestingData.Amount,
 			Start:     startInt64,
-			Duration:  vestingData.Duration,
+			Duration:  vestingDuration,
 			Parts:     int32(vestingData.Parts),
 			Block:     vestingData.Block,
 			Percent:   int32(vestingData.Percent),
@@ -325,6 +330,11 @@ func (k Keeper) GetVestingData(ctx sdk.Context, address sdk.AccAddress) (Vesting
 	return data, true
 }
 
+func ConvertStringToAcc(address string) (sdk.AccAddress, error) {
+	fmt.Println("Converting address:", address)
+	return sdk.AccAddressFromBech32(address)
+}
+
 // USED FOR DEBUGGING TO CLEAR THE VESTING DATA STORE
 // TODO: REMOVE FOR MAINNET
 func (k Keeper) ClearVestingDataStore(ctx sdk.Context) {
@@ -333,32 +343,4 @@ func (k Keeper) ClearVestingDataStore(ctx sdk.Context) {
 	for ; iterator.Valid(); iterator.Next() {
 		store.Delete(iterator.Key())
 	}
-}
-
-func ConvertStringToAcc(address string) (sdk.AccAddress, error) {
-	fmt.Println("Converting address:", address)
-	return sdk.AccAddressFromBech32(address)
-}
-
-func convertISODurationToGoDuration(isoDuration string) (time.Duration, error) {
-	re := regexp.MustCompile(`^PT(\d+H)?(\d+M)?(\d+S)?$`)
-	matches := re.FindStringSubmatch(isoDuration)
-	if matches == nil {
-		return 0, fmt.Errorf("invalid ISO 8601 duration format")
-	}
-
-	var duration time.Duration
-	if matches[1] != "" {
-		hours, _ := strconv.Atoi(matches[1][:len(matches[1])-1])
-		duration += time.Duration(hours) * time.Hour
-	}
-	if matches[2] != "" {
-		minutes, _ := strconv.Atoi(matches[2][:len(matches[2])-1])
-		duration += time.Duration(minutes) * time.Minute
-	}
-	if matches[3] != "" {
-		seconds, _ := strconv.Atoi(matches[3][:len(matches[3])-1])
-		duration += time.Duration(seconds) * time.Second
-	}
-	return duration, nil
 }

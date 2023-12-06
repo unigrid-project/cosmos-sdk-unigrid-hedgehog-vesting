@@ -1,11 +1,9 @@
 package keeper
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"strings"
 	"time"
 
@@ -17,6 +15,7 @@ import (
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
 	durationLib "github.com/sosodev/duration"
 	"github.com/spf13/viper"
+	"github.com/unigrid-project/cosmos-sdk-common/common/httpclient"
 	ugdtypes "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
@@ -193,16 +192,8 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 	//hedgehogUrl := base + "/mockdata" // testing mock data endpoint
 	base := viper.GetString("hedgehog.hedgehog_url")
 	hedgehogUrl := base + "/gridspork/vesting-storage"
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 
-	// Set a timeout for the HTTP client
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   10 * time.Second, // set to 10 seconds or as appropriate
-	}
-	response, err := client.Get(hedgehogUrl)
+	response, err := httpclient.Client.Get(hedgehogUrl)
 
 	if err != nil {
 		if err == io.EOF {

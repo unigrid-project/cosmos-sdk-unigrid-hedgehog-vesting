@@ -1,29 +1,19 @@
 package types
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"io"
-	"net/http"
 	"strings"
-	"time"
 
 	"github.com/spf13/viper"
+	"github.com/unigrid-project/cosmos-sdk-common/common/httpclient"
 )
 
 func HegdehogRequestGetVestingByAddr(addr string) *Vesting {
 	hedgehogUrl := viper.GetString("hedgehog.hedgehog_url") + "/gridspork/vesting-storage/"
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 
-	// Set a timeout for the HTTP client
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   10 * time.Second, // set to 10 seconds or as appropriate
-	}
+	resp, err := httpclient.Client.Get(hedgehogUrl + addr)
 
-	resp, err := client.Get(hedgehogUrl + addr)
 	if err != nil {
 		panic(err)
 	}
@@ -68,17 +58,8 @@ type HedgehogData struct {
 
 func HegdehogCheckIfInMintingList(addr string) bool {
 	hedgehogUrl := viper.GetString("hedgehog.hedgehog_url") + "/gridspork/mint-storage/"
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 
-	// Set a timeout for the HTTP client
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   10 * time.Second, // set to 10 seconds or as appropriate
-	}
-
-	resp, err := client.Get(hedgehogUrl + addr)
+	resp, err := httpclient.Client.Get(hedgehogUrl + addr)
 	if err != nil {
 		panic(err)
 	}

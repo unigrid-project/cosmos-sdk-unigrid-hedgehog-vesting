@@ -197,7 +197,11 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	client := &http.Client{Transport: tr}
+	// Set a timeout for the HTTP client
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   10 * time.Second, // set to 10 seconds or as appropriate
+	}
 	response, err := client.Get(hedgehogUrl)
 
 	if err != nil {

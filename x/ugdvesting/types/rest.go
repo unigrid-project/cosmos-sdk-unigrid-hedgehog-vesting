@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -16,7 +17,11 @@ func HegdehogRequestGetVestingByAddr(addr string) *Vesting {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	client := &http.Client{Transport: tr}
+	// Set a timeout for the HTTP client
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   10 * time.Second, // set to 10 seconds or as appropriate
+	}
 
 	resp, err := client.Get(hedgehogUrl + addr)
 	if err != nil {
@@ -67,7 +72,11 @@ func HegdehogCheckIfInMintingList(addr string) bool {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
-	client := &http.Client{Transport: tr}
+	// Set a timeout for the HTTP client
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   10 * time.Second, // set to 10 seconds or as appropriate
+	}
 
 	resp, err := client.Get(hedgehogUrl + addr)
 	if err != nil {

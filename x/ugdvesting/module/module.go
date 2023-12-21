@@ -21,7 +21,7 @@ import (
 	// this line is used by starport scaffolding # 1
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
-	modulev1 "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/api/pax/ugdvesting/module"
+	modulev1 "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/api/ugdvesting/module"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/keeper"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )

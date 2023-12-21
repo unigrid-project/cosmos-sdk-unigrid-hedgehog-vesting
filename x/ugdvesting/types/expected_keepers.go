@@ -1,25 +1,32 @@
 package types
 
 import (
+	"context"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
-// AccountKeeper defines the expected account keeper used for simulations (noalias)
+// AccountKeeper defines the expected interface for the Account module.
 type AccountKeeper interface {
-	GetAccount(ctx sdk.Context, addr sdk.AccAddress) types.AccountI
+	GetAccount(context.Context, sdk.AccAddress) sdk.AccountI // only used for simulation
 	GetModuleAddress(name string) sdk.AccAddress
-	SetModuleAccount(sdk.Context, authtypes.ModuleAccountI)
-	GetModuleAccount(ctx sdk.Context, moduleName string) authtypes.ModuleAccountI
-	SetAccount(ctx sdk.Context, acc authtypes.AccountI)
+	SetModuleAccount(context.Context, authtypes.ModuleAccountI)
+	GetModuleAccount(context.Context, moduleName string) authtypes.ModuleAccountI
+	SetAccount(context.Context, acc authtypes.AccountI)
 }
 
-// BankKeeper defines the expected interface needed to retrieve account balances.
+// BankKeeper defines the expected interface for the Bank module.
 type BankKeeper interface {
-	SpendableCoins(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
-	GetDenomMetaData(ctx sdk.Context, denom string) (banktypes.Metadata, bool)
-	SetDenomMetaData(ctx sdk.Context, denomMetaData banktypes.Metadata)
-	GetAllBalances(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
+	SpendableCoins(context.Context, sdk.AccAddress) sdk.Coins
+	GetDenomMetaData(context.Context denom string) (banktypes.Metadata, bool)
+	SetDenomMetaData(context.Context, denomMetaData banktypes.Metadata)
+	GetAllBalances(context.Context, addr sdk.AccAddress) sdk.Coins
+}
+
+// ParamSubspace defines the expected Subspace interface for parameters.
+type ParamSubspace interface {
+	Get(context.Context, []byte, interface{})
+	Set(context.Context, []byte, interface{})
 }

@@ -17,7 +17,7 @@ func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
 		k.ProcessVestingAccounts(ctx)
 	}
 	// FORE TESTING ONLY TODO: REMOVE OR DISABLE IN PRODUCTION
-	if ctx.BlockHeight() == 9 {
-		k.ClearVestingDataStore(ctx)
-	}
+	// if ctx.BlockHeight() == 9 {
+	// 	k.ClearVestingDataStore(ctx)
+	// }
 }

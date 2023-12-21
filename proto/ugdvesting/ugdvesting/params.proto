@@ -1,14 +1,16 @@
 syntax = "proto3";
 package ugdvesting.ugdvesting;
 
+import "amino/amino.proto";
 import "gogoproto/gogo.proto";
 
 option go_package = "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types";
 
 // Params defines the parameters for the module.
 message Params {
-  option (gogoproto.goproto_stringer) = false;
-  
+  option (amino.name) = "ugdvesting/x/ugdvesting/Params";
+  option (gogoproto.equal) = true;
+
   uint32 coinPower = 1 ;
   uint64 coinPowerValue = 2 ;
   uint32 precision = 3 ;

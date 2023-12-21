@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
-
-	"google.golang.org/protobuf/proto"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -31,6 +30,11 @@ type VestingData struct {
 	Processed bool
 }
 
+// InMemoryVestingData holds vesting data in memory.
+type InMemoryVestingData struct {
+	VestingAccounts map[string]VestingData
+}
+
 type HedgehogData struct {
 	Timestamp         string `json:"timestamp"`
 	PreviousTimeStamp string `json:"previousTimeStamp"`
@@ -42,43 +46,41 @@ type HedgehogData struct {
 	Signature string `json:"signature"`
 }
 
-func (k Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
-	store := ctx.KVStore(k.storeKey)
-	key := append(ugdtypes.VestingDataKey, address.Bytes()...)
-	store.Set(key, []byte("processed"))
-}
-
-func (k Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) bool {
-	store := ctx.KVStore(k.storeKey)
-	key := append(ugdtypes.VestingDataKey, address.Bytes()...)
-	return store.Has(key)
-}
-
-func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
+func (k *Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
 	k.mu.Lock()
-	defer k.mu.Unlock() // Using defer to ensure the mutex is always unlocked
+	defer k.mu.Unlock()
+	// Assuming you have a field to mark processed in VestingData
+	if data, found := k.InMemoryVestingData.VestingAccounts[address.String()]; found {
+		data.Processed = true
+		k.InMemoryVestingData.VestingAccounts[address.String()] = data
+	}
+}
+
+func (k *Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) bool {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	data, found := k.InMemoryVestingData.VestingAccounts[address.String()]
+	return found && data.Processed
+}
+
+func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
+	k.mu.Lock()
+	defer k.mu.Unlock() // Ensure the mutex is always unlocked
+
 	currentHeight := ctx.BlockHeight()
-	store := ctx.KVStore(k.storeKey)
-	iterator := sdk.KVStorePrefixIterator(store, ugdtypes.VestingDataKey)
-	defer iterator.Close()
 	fmt.Println("=====================================")
 	fmt.Println("=Processing pending vesting accounts=")
 	fmt.Println("=====================================")
-	for ; iterator.Valid(); iterator.Next() {
-		var data ugdtypes.VestingData
-		err := proto.Unmarshal(iterator.Value(), &data)
-		if err != nil {
-			fmt.Println("Error unmarshalling data:", err)
-			continue
-		}
 
-		addr, err := sdk.AccAddressFromBech32(data.Address)
-		if err != nil {
-			continue
-		}
-
+	for address, data := range k.InMemoryVestingData.VestingAccounts {
 		// Check if the block height matches and the account hasn't been processed
 		if data.Block == currentHeight && !data.Processed {
+			addr, err := sdk.AccAddressFromBech32(address)
+			if err != nil {
+				fmt.Println("Error parsing address:", err)
+				continue
+			}
+
 			account := k.GetAccount(ctx, addr)
 			if account == nil {
 				fmt.Println("Account not found:", addr)
@@ -94,55 +96,50 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						continue
 					}
 
-					// TODO: If we want to DELAY the vesting, we can set the startTime to a future time
-					// currently it's set to the current block time when the vesting account is created
 					startTime := ctx.BlockTime().Unix()
 
-					// Calculate the TGE amount
 					tgeAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
-						amount := coin.Amount.Mul(sdk.NewInt(int64(data.Percent))).Quo(sdk.NewInt(100)) // 3% of total balance
+						amount := coin.Amount.Mul(sdk.NewInt(int64(data.Percent))).Quo(sdk.NewInt(100))
 						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
 					}
 
-					// Calculate the regular vesting amount per period
 					amountPerPeriod := sdk.Coins{}
 					for _, coin := range currentBalances {
-						// Subtract the TGE amount from the total balance before calculating the regular vesting amount
 						remainingAmount := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
-						//fmt.Println("Remaining amount:", remainingAmount)
-
-						// Calculate the number of periods where vesting occurs after the cliff
 						vestingPeriods := int(data.Parts) - int(data.Cliff) - 1
 						amount := remainingAmount.Quo(sdk.NewInt(int64(vestingPeriods)))
-
-						//fmt.Println("Amount for each period after TGE and Cliff:", amount)
 						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
-						//fmt.Println("Amount per period:", amountPerPeriod)
 					}
 
-					// Create the vesting periods
 					periods := vestingtypes.Periods{}
-					periodTime := data.Duration
-					// TGE Period
+					// Parse Duration from ISO 8601 format to seconds
+					vestingDuration, err := parseISO8601Duration(data.Duration)
+					if err != nil {
+						fmt.Println("Error parsing vesting duration:", err)
+						continue
+					}
+					// Convert the duration in seconds to a duration string
+					goDurationStr := strconv.FormatInt(vestingDuration, 10) + "s"
+
+					periodTime, _ := time.ParseDuration(goDurationStr) // Convert string to duration
+
 					periods = append(periods, vestingtypes.Period{
-						Length: periodTime,
+						Length: int64(periodTime.Seconds()), // Convert duration to seconds
 						Amount: tgeAmount,
 					})
 
-					// Cliff Periods with 0 tokens
-					zeroAmount := sdk.NewCoin("ugd", sdk.NewInt(0)) // "ugd" is the denom
+					zeroAmount := sdk.NewCoin("ugd", sdk.NewInt(0))
 					for i := 1; i <= int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
-							Length: periodTime,
+							Length: int64(periodTime.Seconds()),
 							Amount: sdk.Coins{zeroAmount},
 						})
 					}
 
-					// Regular Vesting Periods after the cliff
 					for i := int(data.Cliff) + 1; i < int(data.Parts); i++ {
 						periods = append(periods, vestingtypes.Period{
-							Length: periodTime,
+							Length: int64(periodTime.Seconds()),
 							Amount: amountPerPeriod,
 						})
 					}
@@ -167,34 +164,24 @@ func (k Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					vestingAcc := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTime, periods)
 
 					k.SetAccount(ctx, vestingAcc)
-					k.SetProcessedAddress(ctx, addr)
-					//fmt.Println("Converted address to PeriodicVestingAccount:", addr)
 					// Mark the data as processed
 					data.Processed = true
-					bz, err := proto.Marshal(&data)
-					if err != nil {
-						fmt.Println("Error marshalling data:", err)
-						continue
-					}
-
-					store.Set(iterator.Key(), bz)
-					fmt.Println("Processed vesting data:")
+					k.InMemoryVestingData.VestingAccounts[address] = data
+					fmt.Println("Processed vesting data for address:", address)
 				}
 			}
 		}
 	}
 }
 
-func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
+func (k *Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	//base := "http://82.208.23.218:5000"
-	//hedgehogUrl := base + "/mockdata" // testing mock data endpoint
+
 	base := viper.GetString("hedgehog.hedgehog_url")
 	hedgehogUrl := base + "/gridspork/vesting-storage"
 
 	response, err := httpclient.Client.Get(hedgehogUrl)
-
 	if err != nil {
 		if err == io.EOF {
 			fmt.Println("Received empty response from hedgehog server.")
@@ -203,7 +190,6 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 		}
 		return
 	}
-
 	defer response.Body.Close()
 
 	if response.ContentLength == 0 {
@@ -213,7 +199,6 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 
 	var res HedgehogData
 	body, err1 := io.ReadAll(response.Body)
-
 	if err1 != nil {
 		fmt.Println(err1.Error())
 		return
@@ -225,33 +210,11 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 		return
 	}
 
-	vestings := make(map[string]VestingData)
 	for key, vesting := range res.Data.VestingAddresses {
 		address := strings.TrimPrefix(key, "Address(wif=")
 		address = strings.TrimSuffix(address, ")")
 
-		layout := "2006-01-02T15:04:05Z" // This is the standard format for RFC3339
-		startTime, err := time.Parse(layout, vesting.Start)
-		if err != nil {
-			fmt.Println("Error parsing start time:", err)
-			continue
-		}
-
-		vestings[address] = VestingData{
-			Address:  address,
-			Amount:   vesting.Amount,
-			Start:    startTime.Format(time.RFC3339),
-			Duration: vesting.Duration,
-			Parts:    vesting.Parts,
-			Block:    vesting.Block,
-			Percent:  vesting.Percent,
-			Cliff:    vesting.Cliff,
-		}
-
-	}
-
-	for addrStr, vestingData := range vestings {
-		addr, err := ConvertStringToAcc(addrStr)
+		addr, err := ConvertStringToAcc(address)
 		if err != nil {
 			fmt.Println("Error converting address:", err)
 			continue
@@ -261,68 +224,50 @@ func (k Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			fmt.Println("Address already processed:", addr)
 			continue
 		}
-		startTime, err := time.Parse(time.RFC3339, vestingData.Start)
-		if err != nil {
-			fmt.Println("Error parsing start time:", err)
-			continue
-		}
-		startInt64 := startTime.Unix()
-		vestingDurationLib, err := durationLib.Parse(vestingData.Duration)
-		if err != nil {
-			panic(err)
-		}
-		vestingDuration := int64(vestingDurationLib.ToTimeDuration().Seconds())
 
-		ugdVestingData := &ugdtypes.VestingData{
-			Address:   vestingData.Address,
-			Amount:    vestingData.Amount,
-			Start:     startInt64,
-			Duration:  vestingDuration,
-			Parts:     int32(vestingData.Parts),
-			Block:     vestingData.Block,
-			Percent:   int32(vestingData.Percent),
-			Cliff:     int32(vestingData.Cliff),
-			Processed: vestingData.Processed,
+		// Store the parsed data in memory
+		k.InMemoryVestingData.VestingAccounts[key] = VestingData{
+			Address:   key,
+			Amount:    vesting.Amount,
+			Start:     vesting.Start,
+			Duration:  vesting.Duration,
+			Parts:     vesting.Parts,
+			Block:     vesting.Block,
+			Percent:   vesting.Percent,
+			Cliff:     vesting.Cliff,
+			Processed: false,
 		}
-		fmt.Println("vestingData set:", vestingData)
-		// Store the vesting data for processing in ProcessPendingVesting
-		k.SetVestingData(ctx, addr, ugdVestingData)
+		fmt.Println("In-memory vesting data set for address:", address)
 	}
 }
 
-func (k Keeper) SetVestingData(ctx sdk.Context, address sdk.AccAddress, data *ugdtypes.VestingData) {
-	store := ctx.KVStore(k.storeKey)
-	key := append(ugdtypes.VestingDataKey, address.Bytes()...) // Assuming VestingDataKey is a prefix for vesting data
-
-	// Marshal data to bytes
-	b, err := proto.Marshal(data)
+// parseISO8601Duration parses an ISO 8601 duration string and returns the duration in seconds.
+func parseISO8601Duration(durationStr string) (int64, error) {
+	// Example implementation - you'll need a proper parser for ISO 8601 durations
+	duration, err := durationLib.Parse(durationStr)
 	if err != nil {
-		// Handle error, maybe log it or return
-		fmt.Println("Error marshaling vesting data:", err)
-		return
+		return 0, err
 	}
-
-	store.Set(key, b)
+	return int64(duration.ToTimeDuration().Seconds()), nil
 }
 
-func (k Keeper) GetVestingData(ctx sdk.Context, address sdk.AccAddress) (VestingData, bool) {
-	store := ctx.KVStore(k.storeKey)
-	key := append(ugdtypes.VestingDataKey, address.Bytes()...)
+func (k *Keeper) SetVestingDataInMemory(address string, data VestingData) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.InMemoryVestingData.VestingAccounts[address] = data
+}
 
-	b := store.Get(key)
-	if b == nil {
-		return VestingData{}, false
-	}
+func (k *Keeper) GetVestingDataInMemory(address string) (VestingData, bool) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	data, found := k.InMemoryVestingData.VestingAccounts[address]
+	return data, found
+}
 
-	var data VestingData
-	err := json.Unmarshal(b, &data)
-	if err != nil {
-		// Handle error, maybe log it or return
-		fmt.Println("Error unmarshaling vesting data:", err)
-		return VestingData{}, false
-	}
-
-	return data, true
+func (k *Keeper) DeleteVestingDataInMemory(address string) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	delete(k.InMemoryVestingData.VestingAccounts, address)
 }
 
 func ConvertStringToAcc(address string) (sdk.AccAddress, error) {
@@ -332,10 +277,10 @@ func ConvertStringToAcc(address string) (sdk.AccAddress, error) {
 
 // USED FOR DEBUGGING TO CLEAR THE VESTING DATA STORE
 // TODO: REMOVE FOR MAINNET
-func (k Keeper) ClearVestingDataStore(ctx sdk.Context) {
-	store := ctx.KVStore(k.storeKey)
-	iterator := sdk.KVStorePrefixIterator(store, ugdtypes.VestingDataKey)
-	for ; iterator.Valid(); iterator.Next() {
-		store.Delete(iterator.Key())
-	}
-}
+// func (k Keeper) ClearVestingDataStore(ctx sdk.Context) {
+// 	store := ctx.KVStore(k.storeKey)
+// 	iterator := sdk.KVStorePrefixIterator(store, ugdtypes.VestingDataKey)
+// 	for ; iterator.Valid(); iterator.Next() {
+// 		store.Delete(iterator.Key())
+// 	}
+// }

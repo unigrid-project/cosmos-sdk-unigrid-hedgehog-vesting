@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	keepertest "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/testutil/keeper"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/testutil/nullify"
-	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting"
+	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/module"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 

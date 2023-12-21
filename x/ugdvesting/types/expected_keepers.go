@@ -13,16 +13,16 @@ type AccountKeeper interface {
 	GetAccount(context.Context, sdk.AccAddress) sdk.AccountI // only used for simulation
 	GetModuleAddress(name string) sdk.AccAddress
 	SetModuleAccount(context.Context, authtypes.ModuleAccountI)
-	GetModuleAccount(context.Context, moduleName string) authtypes.ModuleAccountI
-	SetAccount(context.Context, acc authtypes.AccountI)
+	GetModuleAccount(ctx context.Context, moduleName string) authtypes.ModuleAccountI
+	SetAccount(ctx context.Context, acc authtypes.AccountI)
 }
 
 // BankKeeper defines the expected interface for the Bank module.
 type BankKeeper interface {
 	SpendableCoins(context.Context, sdk.AccAddress) sdk.Coins
-	GetDenomMetaData(context.Context denom string) (banktypes.Metadata, bool)
-	SetDenomMetaData(context.Context, denomMetaData banktypes.Metadata)
-	GetAllBalances(context.Context, addr sdk.AccAddress) sdk.Coins
+    GetDenomMetaData(ctx context.Context, denom string) (banktypes.Metadata, bool)
+	SetDenomMetaData(ctx context.Context, denomMetaData banktypes.Metadata)
+	GetAllBalances(ctx context.Context, addr sdk.AccAddress) sdk.Coins
 }
 
 // ParamSubspace defines the expected Subspace interface for parameters.

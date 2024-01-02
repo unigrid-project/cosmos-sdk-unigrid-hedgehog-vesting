@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	keepertest "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/testutil/keeper"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/testutil/nullify"
-	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/module"
+	ugdvesting "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/module"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
@@ -18,8 +18,8 @@ func TestGenesis(t *testing.T) {
 	}
 
 	k, ctx := keepertest.UgdvestingKeeper(t)
-	ugdvesting.InitGenesis(ctx, *k, genesisState)
-	got := ugdvesting.ExportGenesis(ctx, *k)
+	ugdvesting.InitGenesis(ctx, k, genesisState)
+	got := ugdvesting.ExportGenesis(ctx, k)
 	require.NotNil(t, got)
 
 	nullify.Fill(&genesisState)

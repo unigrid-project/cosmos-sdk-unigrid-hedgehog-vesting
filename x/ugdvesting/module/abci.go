@@ -1,14 +1,15 @@
 package ugdvesting
 
 import (
-	abci "github.com/cometbft/cometbft/abci/types"
+	"context"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 const startBlockHeight = 50 // example block height for testing vestsing start
 
-func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
+func (am AppModule) BeginBlock(goCtx context.Context) error {
 	k := am.keeper
+	ctx := sdk.UnwrapSDKContext(goCtx)
 	if ctx.BlockHeight() >= startBlockHeight {
 		k.ProcessPendingVesting(ctx)
 	}
@@ -20,4 +21,5 @@ func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
 	// if ctx.BlockHeight() == 9 {
 	// 	k.ClearVestingDataStore(ctx)
 	// }
+	return nil
 }

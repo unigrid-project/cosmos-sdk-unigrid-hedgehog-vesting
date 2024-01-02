@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"cosmossdk.io/log"
+	math "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -15,7 +18,7 @@ import (
 	durationLib "github.com/sosodev/duration"
 	"github.com/spf13/viper"
 	"github.com/unigrid-project/cosmos-sdk-common/common/httpclient"
-	ugdtypes "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
+	//ugdtypes "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
 type VestingData struct {
@@ -100,7 +103,7 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					tgeAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
-						amount := coin.Amount.Mul(sdk.NewInt(int64(data.Percent))).Quo(sdk.NewInt(100))
+						amount := coin.Amount.Mul(math.NewInt(int64(data.Percent))).Quo(math.NewInt(100))
 						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
 					}
 
@@ -108,7 +111,7 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					for _, coin := range currentBalances {
 						remainingAmount := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
 						vestingPeriods := int(data.Parts) - int(data.Cliff) - 1
-						amount := remainingAmount.Quo(sdk.NewInt(int64(vestingPeriods)))
+						amount := remainingAmount.Quo(math.NewInt(int64(vestingPeriods)))
 						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
 					}
 
@@ -129,7 +132,7 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						Amount: tgeAmount,
 					})
 
-					zeroAmount := sdk.NewCoin("ugd", sdk.NewInt(0))
+					zeroAmount := sdk.NewCoin("ugd", math.NewInt(0))
 					for i := 1; i <= int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
@@ -161,7 +164,11 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						Sequence:      baseAcc.GetSequence(),
 					}
 
-					vestingAcc := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTime, periods)
+					vestingAcc, err := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTime, periods)
+					if err != nil {
+						logger := log.NewLogger(os.Stderr)
+						logger.Error("Error creating new periodic vesting account", "err", err)
+					}
 
 					k.SetAccount(ctx, vestingAcc)
 					// Mark the data as processed

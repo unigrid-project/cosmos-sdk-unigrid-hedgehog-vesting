@@ -16,11 +16,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
 	// this line is used by starport scaffolding # 1
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/spf13/cobra"
 	modulev1 "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/api/ugdvesting/module"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/keeper"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
@@ -103,14 +101,14 @@ func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *r
 type AppModule struct {
 	AppModuleBasic
 
-	keeper        keeper.Keeper
+	keeper        *keeper.Keeper
 	accountKeeper types.AccountKeeper
 	bankKeeper    types.BankKeeper
 }
 
 func NewAppModule(
 	cdc codec.Codec,
-	keeper keeper.Keeper,
+	keeper *keeper.Keeper,
 	accountKeeper types.AccountKeeper,
 	bankKeeper types.BankKeeper,
 ) AppModule {
@@ -124,7 +122,7 @@ func NewAppModule(
 
 // RegisterServices registers a gRPC query service to respond to the module-specific gRPC queries
 func (am AppModule) RegisterServices(cfg module.Configurator) {
-	types.RegisterMsgServer(cfg.MsgServer(), keeper.NewMsgServerImpl(am.keeper))
+	types.RegisterMsgServer(cfg.MsgServer(), keeper.NewMsgServerImpl(*am.keeper))
 	types.RegisterQueryServer(cfg.QueryServer(), am.keeper)
 }
 
@@ -153,9 +151,9 @@ func (AppModule) ConsensusVersion() uint64 { return 1 }
 
 // BeginBlock contains the logic that is automatically triggered at the beginning of each block.
 // The begin block implementation is optional.
-func (am AppModule) BeginBlock(_ context.Context) error {
-	return nil
-}
+// func (am AppModule) BeginBlock(_ sdk.Context) error {
+// 	return nil
+// }
 
 // EndBlock contains the logic that is automatically triggered at the end of each block.
 // The end block implementation is optional.
@@ -205,15 +203,21 @@ func ProvideModule(in ModuleInputs) ModuleOutputs {
 	if in.Config.Authority != "" {
 		authority = authtypes.NewModuleAddressOrBech32Address(in.Config.Authority)
 	}
+
+	// inject AccountKeeper into UgdvestingKeeper
 	k := keeper.NewKeeper(
 		in.Cdc,
 		in.StoreService,
 		in.Logger,
 		authority.String(),
+		in.BankKeeper,
+		in.AccountKeeper,
 	)
+
+	// inject StoreService into Module
 	m := NewAppModule(
 		in.Cdc,
-		k,
+		&k,
 		in.AccountKeeper,
 		in.BankKeeper,
 	)

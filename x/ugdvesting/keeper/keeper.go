@@ -8,16 +8,16 @@ import (
 	"cosmossdk.io/log"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
+
+	//paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
 type (
 	Keeper struct {
-		cdc          codec.BinaryCodec
-		storeService store.KVStoreService
-		logger       log.Logger
+		cdc                 codec.BinaryCodec
+		storeService        store.KVStoreService
+		logger              log.Logger
 		authKeeper          types.AccountKeeper
 		bankKeeper          types.BankKeeper
 		mu                  sync.Mutex
@@ -42,10 +42,10 @@ func NewKeeper(
 	}
 
 	return Keeper{
-		cdc:          cdc,
-		storeService: storeService,
-		authority:    authority,
-		logger:       logger,
+		cdc:                 cdc,
+		storeService:        storeService,
+		authority:           authority,
+		logger:              logger,
 		authKeeper:          ak,
 		bankKeeper:          bk,
 		InMemoryVestingData: InMemoryVestingData{VestingAccounts: make(map[string]VestingData)},
@@ -53,16 +53,16 @@ func NewKeeper(
 }
 
 // GetAuthority returns the module's authority.
-func (k Keeper) GetAuthority() string {
+func (k *Keeper) GetAuthority() string {
 	return k.authority
 }
 
 // Logger returns a module-specific logger.
-func (k Keeper) Logger() log.Logger {
+func (k *Keeper) Logger() log.Logger {
 	return k.logger.With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }
 
-func (k Keeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) authtypes.AccountI {
+func (k *Keeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) sdk.AccountI {
 	if k.authKeeper == nil {
 		fmt.Println("authKeeper is nil")
 		return nil
@@ -70,11 +70,11 @@ func (k Keeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) authtypes.Accou
 	return k.authKeeper.GetAccount(ctx, addr)
 }
 
-func (k Keeper) SetAccount(ctx sdk.Context, acc authtypes.AccountI) {
+func (k *Keeper) SetAccount(ctx sdk.Context, acc sdk.AccountI) {
 	k.authKeeper.SetAccount(ctx, acc)
 }
 
-func (k Keeper) GetAllBalances(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins {
+func (k *Keeper) GetAllBalances(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins {
 	if k.bankKeeper == nil {
 		fmt.Println("bankKeeper is nil")
 		return sdk.Coins{}

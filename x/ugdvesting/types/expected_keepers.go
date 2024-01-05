@@ -9,6 +9,12 @@ import (
 
 // AccountKeeper defines the expected interface for the Account module.
 type AccountKeeper interface {
+	GetModuleAddress(name string) sdk.AccAddress
+
+	// TODO remove with genesis 2-phases refactor https://github.com/cosmos/cosmos-sdk/issues/2862
+	SetModuleAccount(context.Context, sdk.ModuleAccountI)
+	GetModuleAccount(ctx context.Context, moduleName string) sdk.ModuleAccountI
+
 	GetAccount(sdk.Context, sdk.AccAddress) sdk.AccountI
 	SetAccount(ctx sdk.Context, acc sdk.AccountI)
 }

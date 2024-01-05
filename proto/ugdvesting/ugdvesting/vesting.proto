@@ -1,7 +1,7 @@
 syntax = "proto3";
 package ugdvesting.ugdvesting;
 
-option go_package = "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types";
+option go_package = "github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/x/ugdvesting/types";
 
 message VestingData {
     string address = 1;

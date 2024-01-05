@@ -4,7 +4,7 @@ package ugdvesting.ugdvesting;
 import "amino/amino.proto";
 import "gogoproto/gogo.proto";
 
-option go_package = "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types";
+option go_package = "github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/x/ugdvesting/types";
 
 // Params defines the parameters for the module.
 message Params {

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
-	"github.com/unigrid-project/cosmos-sdk-common/common/httpclient"
+	"github.com/unigrid-project/cosmos-common/common/httpclient"
 )
 
 func HegdehogRequestGetVestingByAddr(addr string) *Vesting {

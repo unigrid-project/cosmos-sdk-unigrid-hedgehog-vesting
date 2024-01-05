@@ -1,4 +1,4 @@
-module github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting
+module github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting
 
 go 1.21
 
@@ -33,7 +33,8 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	github.com/unigrid-project/cosmos-sdk-common v0.0.6
+	github.com/unigrid-project/cosmos-common v0.0.8
+	github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting v0.0.54
 	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17
 	google.golang.org/grpc v1.59.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
@@ -190,6 +191,7 @@ require (
 	github.com/tendermint/go-amino v0.16.0 // indirect
 	github.com/tetratelabs/wazero v1.5.0 // indirect
 	github.com/tidwall/btree v1.7.0 // indirect
+	github.com/unigrid-project/cosmos-sdk-common v0.0.6 // indirect
 	github.com/vbatts/tar-split v0.11.5 // indirect
 	github.com/zondax/hid v0.9.2 // indirect
 	github.com/zondax/ledger-go v0.14.3 // indirect
@@ -222,5 +224,3 @@ require (
 )
 
 replace github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-
-replace github.com/unigrid-project/cosmos-sdk-common => /home/evan/work/cosmos-sdk-common

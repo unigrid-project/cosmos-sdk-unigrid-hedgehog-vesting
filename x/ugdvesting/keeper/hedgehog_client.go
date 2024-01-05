@@ -17,8 +17,8 @@ import (
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
 	durationLib "github.com/sosodev/duration"
 	"github.com/spf13/viper"
-	"github.com/unigrid-project/cosmos-sdk-common/common/httpclient"
-	//ugdtypes "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
+	"github.com/unigrid-project/cosmos-common/common/httpclient"
+	//ugdtypes "github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
 type VestingData struct {

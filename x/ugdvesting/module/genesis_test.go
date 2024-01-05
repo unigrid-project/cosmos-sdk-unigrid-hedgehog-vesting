@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	keepertest "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/testutil/keeper"
-	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/testutil/nullify"
-	ugdvesting "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/module"
-	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
+	keepertest "github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/testutil/keeper"
+	"github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/testutil/nullify"
+	ugdvesting "github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/x/ugdvesting/module"
+	"github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
 func TestGenesis(t *testing.T) {

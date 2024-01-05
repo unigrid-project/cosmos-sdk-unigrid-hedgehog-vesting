@@ -8,9 +8,9 @@ import (
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
 	"github.com/cosmos/cosmos-sdk/x/simulation"
 
-	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/testutil/sample"
-	ugdvestingsimulation "github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/simulation"
-	"github.com/unigrid-project/cosmos-sdk-unigrid-hedgehog-vesting/x/ugdvesting/types"
+	"github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/testutil/sample"
+	ugdvestingsimulation "github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/x/ugdvesting/simulation"
+	"github.com/unigrid-project/cosmos-unigrid-hedgehog-vesting/x/ugdvesting/types"
 )
 
 // avoid unused import issue

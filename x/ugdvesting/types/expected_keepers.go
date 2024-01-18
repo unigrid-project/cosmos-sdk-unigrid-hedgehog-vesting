@@ -15,7 +15,7 @@ type AccountKeeper interface {
 	SetModuleAccount(context.Context, sdk.ModuleAccountI)
 	GetModuleAccount(ctx context.Context, moduleName string) sdk.ModuleAccountI
 
-	GetAccount(sdk.Context, sdk.AccAddress) sdk.AccountI
+	GetAccount(context.Context, sdk.AccAddress) sdk.AccountI // only used for simulation
 	SetAccount(ctx sdk.Context, acc sdk.AccountI)
 }
 

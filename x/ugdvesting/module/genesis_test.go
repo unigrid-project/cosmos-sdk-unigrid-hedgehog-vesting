@@ -18,8 +18,8 @@ func TestGenesis(t *testing.T) {
 	}
 
 	k, ctx := keepertest.UgdvestingKeeper(t)
-	ugdvesting.InitGenesis(ctx, k, genesisState)
-	got := ugdvesting.ExportGenesis(ctx, k)
+	ugdvesting.InitGenesis(ctx, &k, genesisState)
+	got := ugdvesting.ExportGenesis(ctx, &k)
 	require.NotNil(t, got)
 
 	nullify.Fill(&genesisState)

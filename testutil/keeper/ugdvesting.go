@@ -3,8 +3,8 @@ package keeper
 import (
 	"testing"
 
+	"cosmossdk.io/core/store"
 	"cosmossdk.io/log"
-	"cosmossdk.io/store"
 	"cosmossdk.io/store/metrics"
 	storetypes "cosmossdk.io/store/types"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"

@@ -50,8 +50,12 @@ type HedgehogData struct {
 }
 
 func (k *Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
+	fmt.Println("Locking k.mu")
 	k.mu.Lock()
-	defer k.mu.Unlock()
+	defer func() {
+		fmt.Println("Unlocking k.mu")
+		k.mu.Unlock()
+	}()
 	// Assuming you have a field to mark processed in VestingData
 	if data, found := k.InMemoryVestingData.VestingAccounts[address.String()]; found {
 		data.Processed = true
@@ -59,16 +63,13 @@ func (k *Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
 	}
 }
 
-func (k *Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) bool {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	data, found := k.InMemoryVestingData.VestingAccounts[address.String()]
-	return found && data.Processed
-}
-
 func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
+	fmt.Println("Locking k.mu")
 	k.mu.Lock()
-	defer k.mu.Unlock() // Ensure the mutex is always unlocked
+	defer func() {
+		fmt.Println("Unlocking k.mu")
+		k.mu.Unlock()
+	}()
 
 	currentHeight := ctx.BlockHeight()
 	fmt.Println("=====================================")
@@ -183,7 +184,10 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 func (k *Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 	k.mu.Lock()
-	defer k.mu.Unlock()
+	defer func() {
+		fmt.Println("Unlocking k.mu")
+		k.mu.Unlock()
+	}()
 
 	base := viper.GetString("hedgehog.hedgehog_url")
 	hedgehogUrl := base + "/gridspork/vesting-storage"
@@ -217,10 +221,14 @@ func (k *Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 		return
 	}
 
+	// fmt.Println("Received vesting data from Hedgehog:")
+	// fmt.Printf("Timestamp: %s\n", res.Timestamp)
+	// fmt.Printf("PreviousTimeStamp: %s\n", res.PreviousTimeStamp)
+	// fmt.Printf("Flags: %d\n", res.Flags)
+	// fmt.Printf("Hedgehogtype: %s\n", res.Hedgehogtype)
 	for key, vesting := range res.Data.VestingAddresses {
 		address := strings.TrimPrefix(key, "Address(wif=")
 		address = strings.TrimSuffix(address, ")")
-
 		addr, err := ConvertStringToAcc(address)
 		if err != nil {
 			fmt.Println("Error converting address:", err)
@@ -228,12 +236,12 @@ func (k *Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 		}
 
 		if k.HasProcessedAddress(ctx, addr) {
-			fmt.Println("Address already processed:", addr)
+			fmt.Printf("Address already processed: %s\n", addr)
 			continue
 		}
 
 		// Store the parsed data in memory
-		k.InMemoryVestingData.VestingAccounts[key] = VestingData{
+		vestingData := VestingData{
 			Address:   key,
 			Amount:    vesting.Amount,
 			Start:     vesting.Start,
@@ -244,7 +252,9 @@ func (k *Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 			Cliff:     vesting.Cliff,
 			Processed: false,
 		}
-		fmt.Println("In-memory vesting data set for address:", address)
+
+		k.SetVestingDataInMemory(address, vestingData)
+		//fmt.Printf("In-memory vesting data set for address: %s\n", address)
 	}
 }
 
@@ -259,26 +269,57 @@ func parseISO8601Duration(durationStr string) (int64, error) {
 }
 
 func (k *Keeper) SetVestingDataInMemory(address string, data VestingData) {
-	k.mu.Lock()
-	defer k.mu.Unlock()
+	// fmt.Printf("Setting VestingData in memory for address: %s\n", address)
+	// fmt.Printf("Data: %+v\n", data)
 	k.InMemoryVestingData.VestingAccounts[address] = data
 }
 
 func (k *Keeper) GetVestingDataInMemory(address string) (VestingData, bool) {
+	fmt.Println("Locking k.mu")
 	k.mu.Lock()
-	defer k.mu.Unlock()
+	defer func() {
+		fmt.Println("Unlocking k.mu")
+		k.mu.Unlock()
+	}()
+
 	data, found := k.InMemoryVestingData.VestingAccounts[address]
 	return data, found
 }
 
+func (k *Keeper) LogInMemoryVestingData() {
+	fmt.Println("Logging InMemoryVestingData:")
+	for key, data := range k.InMemoryVestingData.VestingAccounts {
+		fmt.Printf("Key: %s, Value: %+v\n", key, data)
+	}
+}
+
+func (k *Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) bool {
+
+	//k.LogInMemoryVestingData()
+
+	// if len(k.InMemoryVestingData.VestingAccounts) == 0 {
+	// 	fmt.Println("InMemoryVestingData is empty")
+	// } else {
+	// 	fmt.Println("InMemoryVestingData is not empty")
+	// }
+	data, found := k.InMemoryVestingData.VestingAccounts[address.String()]
+	//fmt.Println("After Checking if address has been processed:\n", address)
+
+	return found && data.Processed
+}
+
 func (k *Keeper) DeleteVestingDataInMemory(address string) {
+	fmt.Println("Locking k.mu")
 	k.mu.Lock()
-	defer k.mu.Unlock()
+	defer func() {
+		fmt.Println("Unlocking k.mu")
+		k.mu.Unlock()
+	}()
 	delete(k.InMemoryVestingData.VestingAccounts, address)
 }
 
 func ConvertStringToAcc(address string) (sdk.AccAddress, error) {
-	fmt.Println("Converting address:", address)
+	//fmt.Println("Converting address:", address)
 	return sdk.AccAddressFromBech32(address)
 }
 

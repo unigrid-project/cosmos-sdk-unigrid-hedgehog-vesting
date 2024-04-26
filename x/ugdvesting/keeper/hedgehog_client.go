@@ -50,10 +50,10 @@ type HedgehogData struct {
 }
 
 func (k *Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
-	fmt.Println("Locking k.mu")
+	//fmt.Println("Locking k.mu")
 	k.mu.Lock()
 	defer func() {
-		fmt.Println("Unlocking k.mu")
+		//fmt.Println("Unlocking k.mu")
 		k.mu.Unlock()
 	}()
 	// Assuming you have a field to mark processed in VestingData
@@ -64,17 +64,17 @@ func (k *Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
 }
 
 func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
-	fmt.Println("Locking k.mu")
+	//fmt.Println("Locking k.mu")
 	k.mu.Lock()
 	defer func() {
-		fmt.Println("Unlocking k.mu")
+		//fmt.Println("Unlocking k.mu")
 		k.mu.Unlock()
 	}()
 
 	currentHeight := ctx.BlockHeight()
-	fmt.Println("=====================================")
-	fmt.Println("=Processing pending vesting accounts=")
-	fmt.Println("=====================================")
+	///fmt.Println("=====================================")
+	///fmt.Println("=Processing pending vesting accounts=")
+	///fmt.Println("=====================================")
 
 	for address, data := range k.InMemoryVestingData.VestingAccounts {
 		// Check if the block height matches and the account hasn't been processed
@@ -185,7 +185,7 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 func (k *Keeper) ProcessVestingAccounts(ctx sdk.Context) {
 	k.mu.Lock()
 	defer func() {
-		fmt.Println("Unlocking k.mu")
+		//fmt.Println("Unlocking k.mu")
 		k.mu.Unlock()
 	}()
 
@@ -275,10 +275,10 @@ func (k *Keeper) SetVestingDataInMemory(address string, data VestingData) {
 }
 
 func (k *Keeper) GetVestingDataInMemory(address string) (VestingData, bool) {
-	fmt.Println("Locking k.mu")
+	//fmt.Println("Locking k.mu")
 	k.mu.Lock()
 	defer func() {
-		fmt.Println("Unlocking k.mu")
+		//fmt.Println("Unlocking k.mu")
 		k.mu.Unlock()
 	}()
 
@@ -309,10 +309,10 @@ func (k *Keeper) HasProcessedAddress(ctx sdk.Context, address sdk.AccAddress) bo
 }
 
 func (k *Keeper) DeleteVestingDataInMemory(address string) {
-	fmt.Println("Locking k.mu")
+	//fmt.Println("Locking k.mu")
 	k.mu.Lock()
 	defer func() {
-		fmt.Println("Unlocking k.mu")
+		//fmt.Println("Unlocking k.mu")
 		k.mu.Unlock()
 	}()
 	delete(k.InMemoryVestingData.VestingAccounts, address)

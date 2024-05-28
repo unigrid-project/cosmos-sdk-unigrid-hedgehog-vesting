@@ -49,32 +49,11 @@ type HedgehogData struct {
 	Signature string `json:"signature"`
 }
 
-func (k *Keeper) SetProcessedAddress(ctx sdk.Context, address sdk.AccAddress) {
-	//fmt.Println("Locking k.mu")
-	k.mu.Lock()
-	defer func() {
-		//fmt.Println("Unlocking k.mu")
-		k.mu.Unlock()
-	}()
-	// Assuming you have a field to mark processed in VestingData
-	if data, found := k.InMemoryVestingData.VestingAccounts[address.String()]; found {
-		data.Processed = true
-		k.InMemoryVestingData.VestingAccounts[address.String()] = data
-	}
-}
-
 func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
-	//fmt.Println("Locking k.mu")
 	k.mu.Lock()
-	defer func() {
-		//fmt.Println("Unlocking k.mu")
-		k.mu.Unlock()
-	}()
+	defer k.mu.Unlock()
 
 	currentHeight := ctx.BlockHeight()
-	///fmt.Println("=====================================")
-	///fmt.Println("=Processing pending vesting accounts=")
-	///fmt.Println("=====================================")
 
 	for address, data := range k.InMemoryVestingData.VestingAccounts {
 		// Check if the block height matches and the account hasn't been processed
@@ -102,20 +81,38 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					startTime := ctx.BlockTime().Unix()
 
+					// Calculate TGE amount
 					tgeAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
 						amount := coin.Amount.Mul(math.NewInt(int64(data.Percent))).Quo(math.NewInt(100))
 						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
 					}
 
-					amountPerPeriod := sdk.Coins{}
+					// Calculate remaining amount after TGE
+					remainingAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
-						remainingAmount := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
-						vestingPeriods := int(data.Parts) - int(data.Cliff) - 1
-						amount := remainingAmount.Quo(math.NewInt(int64(vestingPeriods)))
-						amountPerPeriod = append(amountPerPeriod, sdk.NewCoin(coin.Denom, amount))
+						remaining := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
+						remainingAmount = append(remainingAmount, sdk.NewCoin(coin.Denom, remaining))
 					}
 
+					// Calculate the total number of vesting periods
+					totalVestingPeriods := int(data.Parts)
+					// Calculate the total amount to be vested per period (excluding ramp-up)
+					totalVestingAmountPerPeriod := sdk.Coins{}
+					for _, coin := range remainingAmount {
+						amount := coin.Amount.Quo(math.NewInt(int64(totalVestingPeriods)))
+						totalVestingAmountPerPeriod = append(totalVestingAmountPerPeriod, sdk.NewCoin(coin.Denom, amount))
+					}
+
+					// Calculate the ramp-up amount per period
+					rampUpPeriods := int(data.Cliff)
+					rampUpAmountPerPeriod := sdk.Coins{}
+					for _, coin := range totalVestingAmountPerPeriod {
+						amount := coin.Amount.Quo(math.NewInt(int64(rampUpPeriods)))
+						rampUpAmountPerPeriod = append(rampUpAmountPerPeriod, sdk.NewCoin(coin.Denom, amount))
+					}
+
+					// Create vesting periods
 					periods := vestingtypes.Periods{}
 					// Parse Duration from ISO 8601 format to seconds
 					vestingDuration, err := parseISO8601Duration(data.Duration)
@@ -128,26 +125,29 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					periodTime, _ := time.ParseDuration(goDurationStr) // Convert string to duration
 
+					// Add TGE period
 					periods = append(periods, vestingtypes.Period{
-						Length: int64(periodTime.Seconds()), // Convert duration to seconds
+						Length: int64(periodTime.Seconds()),
 						Amount: tgeAmount,
 					})
 
-					zeroAmount := sdk.NewCoin("ugd", math.NewInt(0))
-					for i := 1; i <= int(data.Cliff); i++ {
+					// Add ramp-up periods
+					for i := 0; i < rampUpPeriods; i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
-							Amount: sdk.Coins{zeroAmount},
+							Amount: rampUpAmountPerPeriod,
 						})
 					}
 
-					for i := int(data.Cliff) + 1; i < int(data.Parts); i++ {
+					// Add regular vesting periods
+					for i := 0; i < totalVestingPeriods; i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
-							Amount: amountPerPeriod,
+							Amount: totalVestingAmountPerPeriod,
 						})
 					}
 
+					// Prepare the base account for the vesting account
 					var pubKeyAny *codectypes.Any
 					if baseAcc.GetPubKey() != nil {
 						var err error

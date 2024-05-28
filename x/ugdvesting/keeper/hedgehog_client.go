@@ -122,7 +122,7 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					})
 
 					// Ramp-up periods
-					for i := 1; i <= int(data.Cliff); i++ {
+					for i := 0; i < int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
 							Amount: rampUpAmount,
@@ -130,7 +130,7 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					}
 
 					// Regular vesting periods
-					for i := int(data.Cliff) + 1; i < int(data.Parts); i++ {
+					for i := 0; i < int(data.Parts-1); i++ { // Subtract 1 to account for ramp UP period
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
 							Amount: finalVestingAmount,

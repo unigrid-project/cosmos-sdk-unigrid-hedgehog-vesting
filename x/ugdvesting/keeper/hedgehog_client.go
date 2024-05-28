@@ -56,7 +56,6 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 	currentHeight := ctx.BlockHeight()
 
 	for address, data := range k.InMemoryVestingData.VestingAccounts {
-		// Check if the block height matches and the account hasn't been processed
 		if data.Block == currentHeight && !data.Processed {
 			addr, err := sdk.AccAddressFromBech32(address)
 			if err != nil {
@@ -70,7 +69,6 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 				continue
 			}
 
-			// Convert to PeriodicVestingAccount if it's not already one
 			if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
 				if baseAcc, ok := account.(*vestingtypes.DelayedVestingAccount); ok {
 					currentBalances := k.GetAllBalances(ctx, addr)
@@ -88,69 +86,59 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
 					}
 
-					// Calculate remaining amount after TGE
+					// Remaining amount after TGE
 					remainingAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
-						remaining := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
-						remainingAmount = append(remainingAmount, sdk.NewCoin(coin.Denom, remaining))
+						remainingAmount = append(remainingAmount, sdk.NewCoin(coin.Denom, coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))))
 					}
 
-					// Calculate the total number of vesting periods
-					totalVestingPeriods := int(data.Parts)
-					// Calculate the total amount to be vested per period (excluding ramp-up)
-					totalVestingAmountPerPeriod := sdk.Coins{}
+					// Calculate ramp-up amount
+					rampUpAmount := sdk.Coins{}
 					for _, coin := range remainingAmount {
-						amount := coin.Amount.Quo(math.NewInt(int64(totalVestingPeriods)))
-						totalVestingAmountPerPeriod = append(totalVestingAmountPerPeriod, sdk.NewCoin(coin.Denom, amount))
+						rampUpAmount = append(rampUpAmount, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Cliff)))))
 					}
 
-					// Calculate the ramp-up amount per period
-					rampUpPeriods := int(data.Cliff)
-					rampUpAmountPerPeriod := sdk.Coins{}
-					for _, coin := range totalVestingAmountPerPeriod {
-						amount := coin.Amount.Quo(math.NewInt(int64(rampUpPeriods)))
-						rampUpAmountPerPeriod = append(rampUpAmountPerPeriod, sdk.NewCoin(coin.Denom, amount))
+					// Calculate final vesting periods amount
+					finalVestingAmount := sdk.Coins{}
+					for _, coin := range remainingAmount {
+						finalVestingAmount = append(finalVestingAmount, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Parts-1)))))
 					}
 
-					// Create vesting periods
 					periods := vestingtypes.Periods{}
+
 					// Parse Duration from ISO 8601 format to seconds
 					vestingDuration, err := parseISO8601Duration(data.Duration)
 					if err != nil {
 						fmt.Println("Error parsing vesting duration:", err)
 						continue
 					}
-					// Convert the duration in seconds to a duration string
 					goDurationStr := strconv.FormatInt(vestingDuration, 10) + "s"
+					periodTime, _ := time.ParseDuration(goDurationStr)
 
-					periodTime, _ := time.ParseDuration(goDurationStr) // Convert string to duration
-
-					// Add TGE period
+					// TGE period
 					periods = append(periods, vestingtypes.Period{
 						Length: int64(periodTime.Seconds()),
 						Amount: tgeAmount,
 					})
 
-					// Add ramp-up periods
-					for i := 0; i < rampUpPeriods; i++ {
+					// Ramp-up periods
+					for i := 1; i <= int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
-							Amount: rampUpAmountPerPeriod,
+							Amount: rampUpAmount,
 						})
 					}
 
-					// Add regular vesting periods
-					for i := 0; i < totalVestingPeriods; i++ {
+					// Regular vesting periods
+					for i := int(data.Cliff) + 1; i < int(data.Parts); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
-							Amount: totalVestingAmountPerPeriod,
+							Amount: finalVestingAmount,
 						})
 					}
 
-					// Prepare the base account for the vesting account
 					var pubKeyAny *codectypes.Any
 					if baseAcc.GetPubKey() != nil {
-						var err error
 						pubKeyAny, err = codectypes.NewAnyWithValue(baseAcc.GetPubKey())
 						if err != nil {
 							fmt.Println("Error packing public key into Any:", err)

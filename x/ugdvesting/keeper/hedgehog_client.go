@@ -80,29 +80,32 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					startTime := ctx.BlockTime().Unix()
 
+					// Calculate TGE amount
 					tgeAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
 						amount := coin.Amount.Mul(math.NewInt(int64(data.Percent))).Quo(math.NewInt(100))
 						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
 					}
 
+					// Calculate remaining amount
 					remainingAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
 						remainingAmount = append(remainingAmount, sdk.NewCoin(coin.Denom, coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))))
 					}
 
-					totalVestingParts := data.Parts - 1
-
+					// Calculate vesting amount per period
 					vestingAmountPerPeriod := sdk.Coins{}
 					for _, coin := range remainingAmount {
-						vestingAmountPerPeriod = append(vestingAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(totalVestingParts)))))
+						vestingAmountPerPeriod = append(vestingAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Parts)))))
 					}
 
+					// Calculate ramp-up amount per cliff period
 					rampUpAmountPerPeriod := sdk.Coins{}
 					for _, coin := range vestingAmountPerPeriod {
 						rampUpAmountPerPeriod = append(rampUpAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Cliff)))))
 					}
 
+					// Create vesting periods
 					periods := vestingtypes.Periods{}
 					vestingDuration, err := parseISO8601Duration(data.Duration)
 					if err != nil {
@@ -112,13 +115,13 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					goDurationStr := strconv.FormatInt(vestingDuration, 10) + "s"
 					periodTime, _ := time.ParseDuration(goDurationStr)
 
-					// Add the TGE period
+					// Add TGE period
 					periods = append(periods, vestingtypes.Period{
 						Length: int64(periodTime.Seconds()),
 						Amount: tgeAmount,
 					})
 
-					// Add the cliff periods
+					// Add cliff periods
 					for i := 0; i < int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
@@ -126,8 +129,8 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						})
 					}
 
-					// Add the remaining vesting periods
-					for i := 0; i < int(totalVestingParts); i++ {
+					// Add remaining vesting periods
+					for i := 0; i < int(data.Parts-1); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
 							Amount: vestingAmountPerPeriod,

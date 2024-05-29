@@ -69,6 +69,7 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 				continue
 			}
 
+			// Convert to PeriodicVestingAccount if it's not already one
 			if _, ok := account.(*vestingtypes.PeriodicVestingAccount); !ok {
 				if baseAcc, ok := account.(*vestingtypes.DelayedVestingAccount); ok {
 					currentBalances := k.GetAllBalances(ctx, addr)
@@ -79,37 +80,30 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					startTime := ctx.BlockTime().Unix()
 
-					// Calculate TGE amount
 					tgeAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
 						amount := coin.Amount.Mul(math.NewInt(int64(data.Percent))).Quo(math.NewInt(100))
 						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
 					}
 
-					// Remaining amount after TGE
 					remainingAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
 						remainingAmount = append(remainingAmount, sdk.NewCoin(coin.Denom, coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))))
 					}
 
-					// Calculate total vesting parts excluding TGE
 					totalVestingParts := data.Parts - 1
 
-					// Calculate vesting amount per period
 					vestingAmountPerPeriod := sdk.Coins{}
 					for _, coin := range remainingAmount {
 						vestingAmountPerPeriod = append(vestingAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(totalVestingParts)))))
 					}
 
-					// Calculate ramp-up amount
 					rampUpAmountPerPeriod := sdk.Coins{}
 					for _, coin := range vestingAmountPerPeriod {
 						rampUpAmountPerPeriod = append(rampUpAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Cliff)))))
 					}
 
 					periods := vestingtypes.Periods{}
-
-					// Parse Duration from ISO 8601 format to seconds
 					vestingDuration, err := parseISO8601Duration(data.Duration)
 					if err != nil {
 						fmt.Println("Error parsing vesting duration:", err)
@@ -118,13 +112,13 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					goDurationStr := strconv.FormatInt(vestingDuration, 10) + "s"
 					periodTime, _ := time.ParseDuration(goDurationStr)
 
-					// TGE period
+					// Add the TGE period
 					periods = append(periods, vestingtypes.Period{
 						Length: int64(periodTime.Seconds()),
 						Amount: tgeAmount,
 					})
 
-					// Ramp-up periods
+					// Add the cliff periods
 					for i := 0; i < int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
@@ -132,8 +126,8 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						})
 					}
 
-					// Regular vesting periods
-					for i := 0; i < int(totalVestingParts)-int(data.Cliff); i++ {
+					// Add the remaining vesting periods
+					for i := 0; i < int(totalVestingParts); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
 							Amount: vestingAmountPerPeriod,
@@ -160,10 +154,10 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					if err != nil {
 						logger := log.NewLogger(os.Stderr)
 						logger.Error("Error creating new periodic vesting account", "err", err)
+						continue
 					}
 
 					k.SetAccount(ctx, vestingAcc)
-					// Mark the data as processed
 					data.Processed = true
 					k.InMemoryVestingData.VestingAccounts[address] = data
 					fmt.Println("Processed vesting data for address:", address)

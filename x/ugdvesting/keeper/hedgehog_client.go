@@ -92,16 +92,19 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						remainingAmount = append(remainingAmount, sdk.NewCoin(coin.Denom, coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))))
 					}
 
-					// Calculate ramp-up amount
-					rampUpAmount := sdk.Coins{}
+					// Calculate total vesting parts excluding TGE
+					totalVestingParts := data.Parts - 1
+
+					// Calculate vesting amount per period
+					vestingAmountPerPeriod := sdk.Coins{}
 					for _, coin := range remainingAmount {
-						rampUpAmount = append(rampUpAmount, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Cliff)))))
+						vestingAmountPerPeriod = append(vestingAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(totalVestingParts)))))
 					}
 
-					// Calculate final vesting periods amount
-					finalVestingAmount := sdk.Coins{}
-					for _, coin := range remainingAmount {
-						finalVestingAmount = append(finalVestingAmount, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Parts-1)))))
+					// Calculate ramp-up amount
+					rampUpAmountPerPeriod := sdk.Coins{}
+					for _, coin := range vestingAmountPerPeriod {
+						rampUpAmountPerPeriod = append(rampUpAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Cliff)))))
 					}
 
 					periods := vestingtypes.Periods{}
@@ -125,15 +128,15 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					for i := 0; i < int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
-							Amount: rampUpAmount,
+							Amount: rampUpAmountPerPeriod,
 						})
 					}
 
 					// Regular vesting periods
-					for i := 0; i < int(data.Parts-1); i++ { // Subtract 1 to account for ramp UP period
+					for i := 0; i < int(totalVestingParts)-int(data.Cliff); i++ {
 						periods = append(periods, vestingtypes.Period{
 							Length: int64(periodTime.Seconds()),
-							Amount: finalVestingAmount,
+							Amount: vestingAmountPerPeriod,
 						})
 					}
 

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
-	math "cosmossdk.io/math"
+	"cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -80,29 +80,26 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 
 					startTime := ctx.BlockTime().Unix()
 
-					// Calculate TGE amount
+					// Calculate TGE amount based on data.Amount
 					tgeAmount := sdk.Coins{}
+					if data.Percent == 0 {
+						fmt.Println("Percent cannot be zero")
+						continue
+					}
 					for _, coin := range currentBalances {
-						amount := coin.Amount.Mul(math.NewInt(int64(data.Percent))).Quo(math.NewInt(100))
-						tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
+						if coin.Denom == "uugd" {
+							amount := coin.Amount.Mul(math.NewInt(int64(data.Percent))).Quo(math.NewInt(100))
+							tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
+						}
 					}
 
-					// Calculate remaining amount
+					// Calculate remaining amount after TGE based on data.Amount
 					remainingAmount := sdk.Coins{}
 					for _, coin := range currentBalances {
-						remainingAmount = append(remainingAmount, sdk.NewCoin(coin.Denom, coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))))
-					}
-
-					// Calculate vesting amount per period
-					vestingAmountPerPeriod := sdk.Coins{}
-					for _, coin := range remainingAmount {
-						vestingAmountPerPeriod = append(vestingAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Parts)))))
-					}
-
-					// Calculate ramp-up amount per cliff period
-					rampUpAmountPerPeriod := sdk.Coins{}
-					for _, coin := range vestingAmountPerPeriod {
-						rampUpAmountPerPeriod = append(rampUpAmountPerPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Cliff)))))
+						if coin.Denom == "uugd" {
+							remaining := coin.Amount.Sub(tgeAmount.AmountOf(coin.Denom))
+							remainingAmount = append(remainingAmount, sdk.NewCoin(coin.Denom, remaining))
+						}
 					}
 
 					// Create vesting periods
@@ -121,20 +118,127 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						Amount: tgeAmount,
 					})
 
-					// Add cliff periods
-					for i := 0; i < int(data.Cliff); i++ {
-						periods = append(periods, vestingtypes.Period{
-							Length: int64(periodTime.Seconds()),
-							Amount: rampUpAmountPerPeriod,
-						})
+					if data.Parts == 0 {
+						fmt.Println("Parts cannot be zero")
+						continue
 					}
 
-					// Add remaining vesting periods
-					for i := 0; i < int(data.Parts-1); i++ {
-						periods = append(periods, vestingtypes.Period{
-							Length: int64(periodTime.Seconds()),
-							Amount: vestingAmountPerPeriod,
-						})
+					// Calculate the amount per part
+					amountPerPart := sdk.Coins{}
+					for _, coin := range remainingAmount {
+						amountPerPart = append(amountPerPart, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Parts)))))
+					}
+
+					// If cliff is zero, add all parts directly
+					if data.Cliff == 0 {
+						totalDistributed := sdk.NewCoins()
+						for i := 0; i < int(data.Parts); i++ {
+							periods = append(periods, vestingtypes.Period{
+								Length: int64(periodTime.Seconds()),
+								Amount: amountPerPart,
+							})
+							totalDistributed = totalDistributed.Add(amountPerPart...)
+						}
+
+						// Calculate the remaining difference to match the original balance
+						difference := sdk.NewCoins()
+						for _, coin := range remainingAmount {
+							totalDistributedCoin := totalDistributed.AmountOf(coin.Denom)
+							remaining := coin.Amount.Sub(totalDistributedCoin)
+							difference = difference.Add(sdk.NewCoin(coin.Denom, remaining))
+						}
+
+						// Add the remaining difference to the final vesting period
+						if len(periods) > 0 {
+							periods[len(periods)-1].Amount = periods[len(periods)-1].Amount.Add(difference...)
+						} else {
+							periods = append(periods, vestingtypes.Period{
+								Length: int64(periodTime.Seconds()),
+								Amount: difference,
+							})
+						}
+					} else {
+						// Calculate the amount per cliff period if cliff is not zero
+						rampUpAmountPerCliffPeriod := sdk.Coins{}
+						for _, coin := range amountPerPart {
+							rampUpAmountPerCliffPeriod = append(rampUpAmountPerCliffPeriod, sdk.NewCoin(coin.Denom, coin.Amount.Quo(math.NewInt(int64(data.Cliff)))))
+						}
+
+						// Add cliff periods
+						for i := 0; i < int(data.Cliff); i++ {
+							periods = append(periods, vestingtypes.Period{
+								Length: int64(periodTime.Seconds()),
+								Amount: rampUpAmountPerCliffPeriod,
+							})
+						}
+
+						// Subtract one part from remainingAmount to account for cliff periods
+						for i, coin := range remainingAmount {
+							remainingAmount[i].Amount = coin.Amount.Sub(amountPerPart.AmountOf(coin.Denom))
+						}
+
+						// Add remaining vesting periods
+						totalDistributed := sdk.NewCoins()
+						for i := 0; i < int(data.Parts-1); i++ {
+							periods = append(periods, vestingtypes.Period{
+								Length: int64(periodTime.Seconds()),
+								Amount: amountPerPart,
+							})
+							totalDistributed = totalDistributed.Add(amountPerPart...)
+						}
+
+						// Calculate the remaining difference to match the original balance
+						difference := sdk.NewCoins()
+						for _, coin := range remainingAmount {
+							totalDistributedCoin := totalDistributed.AmountOf(coin.Denom)
+							remaining := coin.Amount.Sub(totalDistributedCoin)
+							difference = difference.Add(sdk.NewCoin(coin.Denom, remaining))
+						}
+
+						// Add the remaining difference to the final vesting period
+						if len(periods) > 0 {
+							periods[len(periods)-1].Amount = periods[len(periods)-1].Amount.Add(difference...)
+						} else {
+							periods = append(periods, vestingtypes.Period{
+								Length: int64(periodTime.Seconds()),
+								Amount: difference,
+							})
+						}
+					}
+
+					// Adjust the final period to handle any remaining small discrepancies
+					totalAmount := sdk.NewCoins()
+					for _, period := range periods {
+						totalAmount = totalAmount.Add(period.Amount...)
+					}
+
+					finalPeriodIndex := len(periods) - 1
+					for _, coin := range currentBalances {
+						if coin.Denom == "uugd" {
+							remaining := coin.Amount.Sub(totalAmount.AmountOf(coin.Denom))
+							if !remaining.IsZero() {
+								periods[finalPeriodIndex].Amount = periods[finalPeriodIndex].Amount.Add(sdk.NewCoin(coin.Denom, remaining))
+							}
+						}
+					}
+
+					// Log intermediate values for debugging
+					fmt.Println("TGE Amount:", tgeAmount)
+					fmt.Println("Remaining Amount after TGE:", remainingAmount)
+					fmt.Println("Amount Per Part:", amountPerPart)
+
+					// Calculate the sum of all periods
+					totalAmount = sdk.NewCoins()
+					for _, period := range periods {
+						totalAmount = totalAmount.Add(period.Amount...)
+					}
+
+					// Compare the sum with currentBalances
+					if !coinsEqual(totalAmount, currentBalances) {
+						fmt.Printf("Mismatch! Original: %s, Calculated: %s\n", currentBalances, totalAmount)
+						continue
+					} else {
+						fmt.Printf("Match! Original: %s, Calculated: %s\n", currentBalances, totalAmount)
 					}
 
 					var pubKeyAny *codectypes.Any
@@ -168,6 +272,19 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 			}
 		}
 	}
+}
+
+// coinsEqual compares two sets of sdk.Coins for equality
+func coinsEqual(a, b sdk.Coins) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].IsEqual(b[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (k *Keeper) ProcessVestingAccounts(ctx sdk.Context) {

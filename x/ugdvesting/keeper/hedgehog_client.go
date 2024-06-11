@@ -78,18 +78,30 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						continue
 					}
 
-					startTime := ctx.BlockTime().Unix()
+					startTime, err := time.Parse(time.RFC3339, data.Start)
+					if err != nil {
+						fmt.Println("Error parsing start time:", err)
+						continue
+					}
+
+					startTimeUnix := startTime.Unix()
 
 					// Calculate TGE amount based on data.Amount
 					tgeAmount := sdk.Coins{}
 					if data.Percent == 0 {
-						fmt.Println("Percent cannot be zero")
-						continue
-					}
-					for _, coin := range currentBalances {
-						if coin.Denom == "uugd" {
-							amount := coin.Amount.Mul(math.NewInt(int64(data.Percent))).Quo(math.NewInt(100))
-							tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
+						fmt.Println("TGE percent is zero, adjusting start time")
+						vestingDuration, err := parseISO8601Duration(data.Duration)
+						if err != nil {
+							fmt.Println("Error parsing vesting duration:", err)
+							continue
+						}
+						startTimeUnix += int64(vestingDuration)
+					} else {
+						for _, coin := range currentBalances {
+							if coin.Denom == "uugd" {
+								amount := coin.Amount.Mul(math.NewInt(int64(data.Percent))).Quo(math.NewInt(100))
+								tgeAmount = append(tgeAmount, sdk.NewCoin(coin.Denom, amount))
+							}
 						}
 					}
 
@@ -113,10 +125,12 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 					periodTime, _ := time.ParseDuration(goDurationStr)
 
 					// Add TGE period
-					periods = append(periods, vestingtypes.Period{
-						Length: int64(periodTime.Seconds()),
-						Amount: tgeAmount,
-					})
+					if data.Percent > 0 {
+						periods = append(periods, vestingtypes.Period{
+							Length: int64(periodTime.Seconds()),
+							Amount: tgeAmount,
+						})
+					}
 
 					if data.Parts == 0 {
 						fmt.Println("Parts cannot be zero")
@@ -257,7 +271,7 @@ func (k *Keeper) ProcessPendingVesting(ctx sdk.Context) {
 						Sequence:      baseAcc.GetSequence(),
 					}
 
-					vestingAcc, err := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTime, periods)
+					vestingAcc, err := vestingtypes.NewPeriodicVestingAccount(baseAccount, currentBalances, startTimeUnix, periods)
 					if err != nil {
 						logger := log.NewLogger(os.Stderr)
 						logger.Error("Error creating new periodic vesting account", "err", err)
